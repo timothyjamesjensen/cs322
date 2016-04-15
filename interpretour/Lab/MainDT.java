@@ -2,7 +2,7 @@ class MainDT {
   public static void main(String[] args) {
 
     // i = (0 == 0);    sets i to a boolean value
-    Stmt setBool = new Assign("i", new EqEq(new Int(0), new Int(0)));
+    Stmt setBool = new VarDecl("i", new EqEq(new Int(0), new Int(0)));
 
     // print i;         prints i (requires integer)
     Stmt printI  = new Print(new Var("i"));
@@ -19,8 +19,7 @@ class MainDT {
     s.print(4);
 
     System.out.println("Running on an empty memory:");
-    Memory mem = new Memory();
-    s.exec(mem);
+    s.exec(null);
 
     System.out.println("Done!");
   }
