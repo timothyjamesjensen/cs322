@@ -1,7 +1,7 @@
 class MainProc {
   public static void main(String[] args) {
     Proc[] procs = new Proc[] {
-      new Proc("gauss", new String[] {"limit"},
+      new Proc("gauss", new Formal[] {new Formal("limit")},
         new Seq(new VarDecl("t", new Int(0)),
         new Seq(new VarDecl("i", new Int(0)),
         new Seq(new While(new LT(new Var("i"), new Var("limit")),
@@ -11,10 +11,10 @@ class MainProc {
                                                            new Var("i"))))),
                new Print(new Var("t")))))),
 
-      new Proc("double", new String[] {"x"},
+      new Proc("double", new Formal[] {new Formal("x")},
         new Print(new Plus(new Var("x"), new Var("x")))),
 
-      new Proc("sum", new String[] {"n", "a"},
+      new Proc("sum", new Formal[] {new Formal("n"), new Formal("a")},
         new If(new LT(new Int(0), new Var("n")),
                new Call("sum", new Expr[] {
                                  new Minus(new Var("n"), new Int(1)),
