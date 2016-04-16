@@ -120,7 +120,7 @@ class EqEq extends Expr {
 //        |  Print Expr
 
 abstract class Stmt {
-  abstract Env exec(Env env);
+  abstract Env exec(Program prog, Env env);
   abstract void print(int ind);
 
   static void indent(int ind) {
@@ -134,8 +134,8 @@ class Seq extends Stmt {
   private Stmt l, r;
   Seq(Stmt l, Stmt r) { this.l = l; this.r = r; }
 
-  Env exec(Env env) {
-    return r.exec(l.exec(env));
+  Env exec(Program prog, Env env) {
+    return r.exec(prog, l.exec(prog, env));
   }
 
   void print(int ind) {
@@ -151,7 +151,7 @@ class Assign extends Stmt {
     this.lhs = lhs; this.rhs = rhs;
   }
 
-  Env exec(Env env) {
+  Env exec(Program prog, Env env) {
     Env.lookup(env, lhs).setValue(rhs.eval(env));
     return env;
   }
@@ -169,9 +169,9 @@ class While extends Stmt {
     this.test = test; this.body = body;
   }
 
-  Env exec(Env env) {
+  Env exec(Program prog, Env env) {
     while (test.eval(env).asBool()) {
-      body.exec(env);
+      body.exec(prog, env);
     }
     return env;
   }
@@ -192,11 +192,11 @@ class If extends Stmt {
     this.test = test; this.t = t; this.f = f;
   }
 
-  Env exec(Env env) {
+  Env exec(Program prog, Env env) {
     if (test.eval(env).asBool()) {
-      t.exec(env);
+      t.exec(prog, env);
     } else {
-      f.exec(env);
+      f.exec(prog, env);
     }
     return env;
   }
@@ -217,7 +217,7 @@ class Print extends Stmt {
   private Expr exp;
   Print(Expr exp) { this.exp = exp; }
 
-  Env exec(Env env) {
+  Env exec(Program prog, Env env) {
     System.out.println("Output: " + exp.eval(env).asInt());
     return env;
   }
@@ -233,12 +233,115 @@ class VarDecl extends Stmt {
   private Expr expr;
   VarDecl(String var, Expr expr) { this.var = var; this.expr = expr; }
 
-  Env exec(Env env) {
+  Env exec(Program prog, Env env) {
     return new Env(var, expr.eval(env), env);
   }
   
   void print (int ind) {
     indent(ind);
     System.out.println("var " + var + " = " + expr.show() + ";");
+  }
+}
+
+class Proc {
+  private String   name;
+  private String[] formals;
+  private Stmt     body;
+
+  Proc(String name, String[] formals, Stmt body) {
+    this.name = name; this.formals = formals; this.body = body;
+  }
+
+  String getName() { return name; }
+
+  void call(Program prog, Env env, Expr[] actuals) {
+    if (actuals.length!=formals.length) {
+      System.out.println("ABORT: Wrong number of arguments for " + name);
+      System.exit(1);
+    }
+    Env newenv = null;
+    for (int i=0; i<actuals.length; i++) {
+      newenv = new Env(formals[i], actuals[i].eval(env), newenv);
+    }
+    body.exec(prog, newenv);
+  }
+  
+  void print(int ind) {
+    Stmt.indent(ind);
+    System.out.print("procedure " + name + "(");
+    for (int i=0; i<formals.length; i++) {
+      if (i>0) {
+        System.out.print(", ");
+      }
+      System.out.print(formals[i]);
+    }
+    System.out.println(") {");
+
+    body.print(ind+2);
+
+    Stmt.indent(ind);
+    System.out.println("}");
+  }
+}
+
+class Program {
+  private Proc[] procs;
+  private Stmt body;
+
+  Program(Proc[] procs, Stmt body) {
+    this.procs = procs; this.body = body;
+  }
+
+  Program(Stmt body) {
+    this(new Proc[] {}, body);
+  }
+
+  void call(Env env, String name, Expr[] actuals) {
+    for (int i=0; i<procs.length; i++) {
+      if (name.equals(procs[i].getName())) {
+        procs[i].call(this, env, actuals);
+        return;
+      }
+    }
+    System.out.println("ABORT: Cannot find function " + name);
+    System.exit(1);
+  }
+
+  void run() {
+    body.exec(this, null);
+  }
+
+  void print() {
+    for (int i=0; i<procs.length; i++) {
+      procs[i].print(4);
+    }
+    body.print(4);
+    System.out.println();
+  }
+}
+
+class Call extends Stmt {
+  private String name;
+  private Expr[] actuals;
+  Call(String name, Expr[] actuals) {
+    this.name = name; this.actuals = actuals;
+  }
+
+  Env exec(Program prog, Env env) {
+    prog.call(env, name, actuals);
+    return env;
+  }
+
+  void print(int ind) {
+    indent(ind);
+    System.out.print(name + "(");
+    for (int i=0; i<actuals.length; i++) {
+      if (i>0) {
+        System.out.print(", ");
+      }
+    System.out.print(actuals[i].show());
+    }
+    System.out.println(");");
+
   }
 }

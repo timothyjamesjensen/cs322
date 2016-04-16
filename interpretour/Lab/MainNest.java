@@ -7,11 +7,13 @@ class MainNest {
                             new Assign("i", new Int(3))),
                      new Print(new Var("i"))));
 
+    Program prog = new Program(s);
+
     System.out.println("Complete program is:");
-    s.print(4);
+    prog.print();
 
     System.out.println("Running in an empty environment:");
-    s.exec(null);
+    prog.run();
 
     System.out.println("Done!");
   }
