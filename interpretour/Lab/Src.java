@@ -386,7 +386,7 @@ class Print extends Stmt {
   Print(Expr exp) { this.exp = exp; }
 
   Env exec(Program prog, Env env) {
-    System.out.println("Output: " + exp.eval(env).asInt());
+    System.out.println("Output: " + exp.eval(env).show());
     return env;
   }
 
