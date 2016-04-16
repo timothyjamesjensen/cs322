@@ -73,6 +73,8 @@ abstract class AValue extends Value {
       System.exit(1);
     }
   } 
+
+  abstract String buildString();
 } 
 
 class SingleValue extends AValue {
@@ -83,6 +85,7 @@ class SingleValue extends AValue {
 
   // Additional methods go here ...
   String show() { return "[" + val.show() + "]"; }
+  String buildString() { return val.show(); }
 }
 
 class MultiValue extends AValue {
@@ -92,17 +95,15 @@ class MultiValue extends AValue {
   Value nth(int n) { rangeCheck(n); return vals[n]; }
 
   // Additional methods go here ... 
-  String show() { return buildString();}
+  String show() { return "[" + buildString() + "]";}
   String buildString() {
     String rs = "";
-    rs += "[";
     for (int i=0; i<length(); i++) {
       if (i>0) {
         rs += ", ";
       }
     rs += vals[i].show();
     }
-    rs += "]";
     return rs;
   }
 }
@@ -120,17 +121,15 @@ class RangeValue extends AValue {
   Value nth(int n) { rangeCheck(n); return new IValue(lo+n); }
 
   // Additional methods go here ...
-  String show() { return buildString(); }
+  String show() { return "[" + buildString() + "]"; }
   String buildString() {
     String rs = "";
-    rs += "[";
     for (int i=1; i<len+1; i++) {
       if (i>1) {
         rs += ", ";
       }
       rs += Integer.toString(i);
     }
-    rs += "]";
     return rs;
   }
 }
@@ -154,7 +153,14 @@ class ConcatValue extends AValue {
   }
 
   // Additional methods go here ...
-  String show() { return ""; }
+  String show() { return "[" + buildString() + "]"; }
+  String buildString() {
+    String rs = "";
+    rs += left.buildString();
+    rs += ", ";
+    rs += right.buildString();
+    return rs;  
+  }
 } 
 //____________________________________________________________________________
 // Expr ::= Var
