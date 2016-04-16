@@ -12,6 +12,13 @@ abstract class Value {
     System.exit(1);
     return 42; // not reached
   }
+
+    
+  Value enter(Value val) {
+    System.out.println("ABORT: function value expected");
+    System.exit(1);
+    return null; // not reached
+  }
 }
 
 class BValue extends Value {
@@ -32,6 +39,21 @@ class IValue extends Value {
   int asInt() { return i; }
 }
 
+class FValue extends Value {
+  private Env    env;
+  private String arg;
+  private Expr   body;
+
+  FValue(Env env, String arg, Expr body) {
+    this.env = env; this.arg = arg; this.body = body;
+  }
+
+  String show() { return "<function>"; }
+
+  Value enter(Value val) {
+    return body.eval(new ValEnv(arg, val, env));
+  }
+}
 //____________________________________________________________________________
 // Expr ::= Var
 //        |  Int
@@ -61,6 +83,34 @@ class Var extends Expr {
   }
 
   String show() { return name; }
+}
+
+class Lambda extends Expr {
+  private String var;
+  private Expr   body;     //    \var -> body
+
+  Lambda(String var, Expr body) {
+    this.var = var; this.body = body;
+  }
+
+  Value eval(Env env) {
+    return new FValue(env, var, body);
+  }
+  String show() { return "(\\" + var + " -> " + body.show() + ")"; }
+}
+
+class Apply extends Expr {
+  private Expr fun;
+  private Expr arg;
+  Apply(Expr fun, Expr arg) {
+    this.fun = fun;; this.arg = arg;
+  }
+ 
+  Value eval(Env env) {
+    return fun.eval(env).enter(arg.eval(env));
+  }
+
+  String show() { return "(\\" + fun.show() + " @ " + arg.show() + ")"; }
 }
 
 class Int extends Expr {
