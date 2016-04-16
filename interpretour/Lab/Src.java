@@ -92,7 +92,19 @@ class MultiValue extends AValue {
   Value nth(int n) { rangeCheck(n); return vals[n]; }
 
   // Additional methods go here ... 
-  String show() { return "";}
+  String show() { return buildString();}
+  String buildString() {
+    String rs = "";
+    rs += "[";
+    for (int i=0; i<length(); i++) {
+      if (i>0) {
+        rs += ", ";
+      }
+    rs += vals[i].show();
+    }
+    rs += "]";
+    return rs;
+  }
 }
 
 class RangeValue extends AValue {
