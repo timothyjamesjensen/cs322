@@ -54,6 +54,96 @@ class FValue extends Value {
     return body.eval(new ValEnv(arg, val, env));
   }
 }
+
+abstract class AValue extends Value {
+  /** Return the length (i.e., number of values) in this array.
+   */
+  abstract int length();
+
+  /** Return the value at the nth position in this array; valid
+   *  indices run from 0 to length()-1.
+   */
+  abstract Value nth(int n);
+
+  /** Utility method to check that an index is in range.
+   */
+  void rangeCheck(int n) {
+    if (n<0 || n>=length()) {
+      System.out.println("ABORT: index out of bounds");
+      System.exit(1);
+    }
+  } 
+} 
+
+class SingleValue extends AValue {
+  private Value val;
+  SingleValue(Value val) { this.val = val; }
+  int length() { return 1; }
+  Value nth(int n) { rangeCheck(n); return val; }
+
+  // Additional methods go here ...
+  String show() { return "[" + val.show() + "]"; }
+}
+
+class MultiValue extends AValue {
+  private Value[] vals;
+  MultiValue(Value[] vals) { this.vals = vals; }
+  int length() { return vals.length; }
+  Value nth(int n) { rangeCheck(n); return vals[n]; }
+
+  // Additional methods go here ... 
+  String show() { return "";}
+}
+
+class RangeValue extends AValue {
+  private int lo;
+  private int hi;
+  private int len;
+  RangeValue(int lo, int hi) {
+    this.lo  = lo;
+    this.hi  = hi;
+    this.len = (hi>=lo) ? (1+hi-lo) : 0;
+  }
+  int length()     { return len; }
+  Value nth(int n) { rangeCheck(n); return new IValue(lo+n); }
+
+  // Additional methods go here ...
+  String show() { return buildString(); }
+  String buildString() {
+    String rs = "";
+    rs += "[";
+    for (int i=1; i<len+1; i++) {
+      if (i>1) {
+        rs += ", ";
+      }
+      rs += Integer.toString(i);
+    }
+    rs += "]";
+    return rs;
+  }
+}
+
+class ConcatValue extends AValue {
+  // Elements of the left array come before the elements
+  // of the right array in the combined AValue:
+  private AValue left;
+  private AValue right;
+  private int    llen;   // Number of elements in left array
+  private int    len;    // Total number of elements
+  ConcatValue(AValue left, AValue right) {
+    this.left  = left;
+    this.right = right;
+    this.llen  = left.length();
+    this.len   = llen + right.length();
+  }
+  int length() { return len; }
+  Value nth(int n) {
+    return (n<llen) ? left.nth(n) : right.nth(n-llen);
+  }
+
+  // Additional methods go here ...
+  String show() { return ""; }
+} 
 //____________________________________________________________________________
 // Expr ::= Var
 //        |  Int
