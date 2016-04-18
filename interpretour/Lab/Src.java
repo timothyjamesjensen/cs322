@@ -170,10 +170,12 @@ class MultiValue extends AValue {
   String buildString() {
     String rs = "";
     for (int i=0; i<length(); i++) {
-      if (i>0) {
-        rs += ", ";
+      if (vals[i] != null) {
+        if (i>0) {
+          rs += ", ";
+        }
+      rs += vals[i].show();
       }
-    rs += vals[i].show();
     }
     return rs;
   }
@@ -257,6 +259,9 @@ class Array extends Expr {
 
   Value eval(Env env) {
     if (elements.length == 1) {
+      if (elements[0] == null) {
+        return new SingleValue(null);
+      }
       return new SingleValue(elements[0].eval(env));
     }
     return new MultiValue(buildVList(elements, env));
@@ -272,6 +277,9 @@ class Array extends Expr {
 
   String show() { 
     String rs = "";
+    if (elements[0] == null) {
+      return "[]";
+    }
     rs += "[";
     for (int i=0; i<elements.length; i++) {
       if (i>0) {
