@@ -137,10 +137,10 @@ abstract class AValue extends Value {
 
   Value plusA(AValue that) {    
      
-    ConcatValue cValue = new ConcatValue(that, this);
+    ConcatValue cValue = new ConcatValue(that, this); 
     int length = cValue.length();
     Value[] values = new Value[length];
-    for (int i=0; i<length; i++) {
+    for (int i=0; i<cValue.length(); i++) {
       values[i] = cValue.nth(i);
     }
 
