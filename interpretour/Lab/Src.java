@@ -1,6 +1,36 @@
 abstract class Value {
   abstract String show();
 
+  Value plus(Value that) {
+    System.out.println("ABORT:  something went wrong!");
+    System.exit(1);
+    return new IValue(32);
+  }
+
+  Value plusI(IValue that) {
+    System.out.println("ABORT:  something went wrong...again");
+    System.exit(1);
+    return new IValue(32);
+  }
+
+  Value plusA(AValue that) {
+    System.out.println("ABORT: something went wrong...with plusA");
+    System.exit(1);
+    return new IValue(32);
+  }
+
+  int length() {
+    System.out.println("ABORT: array value expected");
+    System.exit(1);
+    return 32;    
+  };
+
+  Value nth(int n) {
+    System.out.println("ABORT: array value expected");
+    System.exit(1);
+    return new IValue(32);
+  }
+
   boolean asBool() {
     System.out.println("ABORT: Boolean value expected");
     System.exit(1);
@@ -12,6 +42,12 @@ abstract class Value {
     System.exit(1);
     return 42; // not reached
   }
+
+   boolean isArray() {
+     System.out.println("ABORT: array value expected");
+     System.exit(1);
+     return false; // not reached
+   }
 
     
   Value enter(Value val) {
@@ -37,6 +73,10 @@ class IValue extends Value {
   String show() { return Integer.toString(i); }
 
   int asInt() { return i; }
+
+  Value plus(Value that) { return that.plusI(this); }
+
+  Value plusI(IValue that) { return new IValue(this.asInt() + that.asInt()); }
 }
 
 class FValue extends Value {
@@ -75,6 +115,22 @@ abstract class AValue extends Value {
   } 
 
   abstract String buildString();
+
+  boolean isArray() { return true; }
+
+  Value plus(Value that) { return that.plusA(this); }
+
+  Value plusA(AValue that) {    
+     
+    ConcatValue cValue = new ConcatValue(that, this);
+    int length = cValue.length();
+    Value[] values = new Value[length];
+    for (int i=0; i<length; i++) {
+      values[i] = cValue.nth(i);
+    }
+
+    return new MultiValue(values);
+  }
 } 
 
 class SingleValue extends AValue {
@@ -178,6 +234,96 @@ abstract class Expr {
   } 
 }
 
+class Array extends Expr {
+  private Expr[] elements;
+  Array(Expr[] elements) {
+    this.elements = elements;
+  }
+
+  Value eval(Env env) {
+    if (elements.length == 1) {
+      return new SingleValue(elements[0].eval(env));
+    }
+    return new MultiValue(buildVList(elements, env));
+  }
+
+  Value[] buildVList(Expr[] e, Env env) {
+    Value[] values = new Value[e.length];
+    for (int i=0; i<e.length; i++) {
+      values[i] = e[i].eval(env);
+    }
+    return values;
+  }
+
+  String show() { 
+    String rs = "";
+    rs += "[";
+    for (int i=0; i<elements.length; i++) {
+      if (i>0) {
+        rs += ", ";
+      }
+      rs += elements[i].show();
+    }
+    rs += "]";
+    return rs; 
+  }
+}
+
+class Length extends Expr {
+  private Expr array;
+  Length(Expr array) {
+    this.array = array;
+  }
+
+  Value eval (Env env) {
+      return new IValue(array.eval(env).length());
+  }  
+
+  String show() { return "length(" + array.show() + ")"; }
+}
+
+class Range extends Expr {
+  private Expr e1;
+  private Expr e2;
+  Range(Expr e1, Expr e2) {
+    this.e1 = e1; this.e2 = e2;
+  }
+
+  Value eval (Env env) {
+    return new MultiValue(buildVList(env));
+  }
+
+  Value[] buildVList(Env env) { 
+    int e1Value = e1.eval(env).asInt();
+    int e2Value = e2.eval(env).asInt();
+    int length = e2Value - e1Value + 1;
+    Value[] values = new Value[length];
+    for (int i=0; i<length; i++) {
+      values[i] = new IValue(e1Value + i);
+    }
+    return values;
+  }
+
+  String show() { 
+    return "[" + e1.show() + ".." + e2.show() + "]";  
+  }
+}
+
+class Nth extends Expr {
+  private Expr e1;
+  private Expr e2;
+  Nth(Expr e1, Expr e2) {
+    this.e1 = e1; this.e2 = e2;
+  }
+
+  Value eval (Env env) {
+    int index = e2.eval(env).asInt();
+    return e1.eval(env).nth(index);
+  }
+
+  String show() { return e1.show() + "[" + e2.show() + "]"; }
+}
+
 class Var extends Expr {
   private String name;
   Var(String name) { this.name = name; }
@@ -234,7 +380,8 @@ class Plus extends Expr {
   Plus(Expr l, Expr r) { this.l = l; this.r = r; }
 
   Value eval(Env env) { 
-    return new IValue(l.eval(env).asInt() + r.eval(env).asInt()); 
+    //return new IValue(l.eval(env).asInt() + r.eval(env).asInt());
+    return l.eval(env).plus(r.eval(env)); 
   }
   String show() { return "(" + l.show() + " + " + r.show() + ")"; }
 }
