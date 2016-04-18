@@ -14,20 +14,22 @@ class MainAExpr {
     Array a2 = new Array(e1);
     Array a3 = new Array(arr);
     array[0] = new Plus(a1, a2);
-    Expr e2 = new Int(1);
-    Expr e3 = new Int(3);
-    Expr e4 = new Int(4);
-    Expr e5 = new Array(e1);
-    Expr e6 = new Int(2);
-    Expr e7 = new Int(4);
-    //Expr e8
+    Expr int1 = new Int(1);
+    Expr int3 = new Int(3);
+    Expr int4 = new Int(4);
+    Expr int2 = new Int(2);
+
+    Expr vals[] = new Expr[3];
+    vals[0] = int2; vals[1] = int3; vals[2] = int4;
+    Expr a4 = new Array(vals);  
+ 
     Stmt s = 
-    new Seq(new VarDecl("array", new Plus(a1, a3)),
-    new Seq(new VarDecl("range", new Range(new Plus(e2,e6),new Plus(e3,e7))),
-    new Seq(new VarDecl("other", new Plus(a1, new Int(1))),
+    new Seq(new VarDecl("array", new Plus(a1, a2)),
+    new Seq(new VarDecl("range", new Range(new Plus(int1,int2),new Plus(int3,int4))),
+    new Seq(new VarDecl("other", new Plus(new Plus(a3, new Int(1)), a4)),
     new Seq(new Print(new Plus(new Plus(new Var("array"), new Var("range")), new Var("other"))),
-    new Seq(new Print(new Length(new Var("array"))),
-    new Print(new Nth(new Var("range"), e4)))))));
+    new Seq(new Print(new Length(new Var("other"))),
+    new Print(new Nth(new Var("range"), int4)))))));
 
     Program prog = new Program(s);
 
