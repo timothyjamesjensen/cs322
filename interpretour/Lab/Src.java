@@ -8,7 +8,7 @@ abstract class Value {
   }
 
   Value plusI(IValue that) {
-    System.out.println("ABORT:  something went wrong...again");
+    System.out.println("ABORT:  something went wrong...with PlusI");
     System.exit(1);
     return new IValue(32);
   }
@@ -473,6 +473,40 @@ abstract class Stmt {
     for (int i=0; i<ind; i++) {
       System.out.print(" ");
     }
+  }
+}
+
+class Foreach extends Stmt {
+  private String i;    // variable to be used for the index
+  private String v;    // variable to be used for corresponding value
+  private Expr   arr;  // the array expression
+  private Stmt   body; // the loop body
+
+  Foreach(String i, String v, Expr arr, Stmt body) {
+    this.i    = i;
+    this.v    = v;
+    this.arr  = arr;
+    this.body = body;
+  }
+    
+  Env exec(Program prog, Env env) {
+    // Fill this in ...
+    int length = arr.eval(env).length();
+    for (int x=0; x<length; x++) {
+        VarDecl vd = new VarDecl(this.v, new Int(arr.eval(env).nth(x).asInt()));
+        VarDecl id = new VarDecl(this.i, new Int(x));
+        body.exec(prog,vd.exec(prog, env));
+    } 
+    return env;
+  }
+    
+  void print(int ind) {
+    indent(ind);
+    System.out.println("foreach " + i + " => " + v
+                           + " in " + arr.show() + " {");
+    body.print(ind+2);
+    indent(ind);
+    System.out.println("}");
   }
 }
 
