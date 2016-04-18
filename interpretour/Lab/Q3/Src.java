@@ -80,12 +80,20 @@ class IValue extends Value {
 
   Value plusA(AValue that) { 
     SingleValue sv = new SingleValue(this);
-
     ConcatValue cValue = new ConcatValue(that, sv);
     int length = cValue.length();
+    for (int i = 0; i<cValue.length(); i++) {
+      if (cValue.nth(i) == null) {
+        length--;
+      }  
+    }
+    int x = 0; 
     Value[] values = new Value[length];
-    for (int i=0; i<length; i++) {
-      values[i] = cValue.nth(i);
+    for (int i=0; i<cValue.length(); i++) {
+      if (cValue.nth(i) != null) {
+        values[x] = cValue.nth(i);
+        x++;
+      }
     }
 
     return new MultiValue(values);
