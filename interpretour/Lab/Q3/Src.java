@@ -285,7 +285,7 @@ class Array extends Expr {
 
   String show() { 
     String rs = "";
-    if (elements[0] == null) {
+    if (elements == null) {
       return "[]";
     }
     rs += "[";
