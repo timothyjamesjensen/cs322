@@ -495,7 +495,7 @@ class Foreach extends Stmt {
     for (int x=0; x<length; x++) {
         VarDecl vd = new VarDecl(this.v, new Int(arr.eval(env).nth(x).asInt()));
         VarDecl id = new VarDecl(this.i, new Int(x));
-        body.exec(prog,vd.exec(prog, env));
+        body.exec(prog,vd.exec(prog, id.exec(prog, env)));
     } 
     return env;
   }
