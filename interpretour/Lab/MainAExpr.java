@@ -22,9 +22,10 @@ class MainAExpr {
     Stmt s = 
     new Seq(new VarDecl("array", new Plus(a1, a2)),
     new Seq(new VarDecl("range", new Range(new Plus(e2,e6),new Plus(e3,e7))),
-    new Seq(new Print(new Plus(new Var("array"), new Var("range"))),
+    new Seq(new VarDecl("other", new Plus(new Int(1), a1)),
+    new Seq(new Print(new Plus(new Plus(new Var("array"), new Var("range")), new Var("other"))),
     new Seq(new Print(new Length(new Var("array"))),
-    new Print(new Nth(new Var("range"), e4))))));
+    new Print(new Nth(new Var("range"), e4)))))));
 
     Program prog = new Program(s);
 

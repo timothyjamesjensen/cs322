@@ -77,6 +77,19 @@ class IValue extends Value {
   Value plus(Value that) { return that.plusI(this); }
 
   Value plusI(IValue that) { return new IValue(this.asInt() + that.asInt()); }
+
+  Value plusA(AValue that) { 
+    SingleValue sv = new SingleValue(this);
+
+    ConcatValue cValue = new ConcatValue(that, sv);
+    int length = cValue.length();
+    Value[] values = new Value[length];
+    for (int i=0; i<length; i++) {
+      values[i] = cValue.nth(i);
+    }
+
+    return new MultiValue(values);
+  }
 }
 
 class FValue extends Value {
@@ -119,6 +132,8 @@ abstract class AValue extends Value {
   boolean isArray() { return true; }
 
   Value plus(Value that) { return that.plusA(this); }
+
+  Value plusI(IValue that) { return that.plusA(this); }
 
   Value plusA(AValue that) {    
      
