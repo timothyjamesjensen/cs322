@@ -656,9 +656,17 @@ class DoWhile extends Stmt {
   }
 
   Code compile(Program prog, Code next) {
-    System.err.println("DoWhile compile() method NOT IMPLEMENTED");
-    System.exit(1);
-    return next; // not reached
+    Block head = prog.block();
+    Code  loop = new Goto(head);
+    Tmp   tmp  = new Tmp();
+
+    head.set(body.compile(prog,
+             test.compileTo(tmp,
+                  new Cond(tmp,
+                       prog.block(body.compile(prog, loop)),
+                       prog.block(next)))));
+          
+    return loop;
   }
 }
 
