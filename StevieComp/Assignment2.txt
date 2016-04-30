@@ -1,0 +1,90 @@
+Tim Jensen
+CS322
+Assignment 2
+
+a) do ... while loops
+
+  Implementation:
+  	Implementing a do while loop is slightly different
+  	to a standard while loop in that the body of the
+  	loop precedes the condition. There is at least 
+  	one pass through. Thus I needed to find a way to
+  	ensure that the body would always execute at least
+  	one time. The following is my Compile method.
+
+  	Code compile(Program prog, Code next) {
+      Block head = prog.block();
+      Code  loop = new Goto(head);
+      Tmp   tmp  = new Tmp();
+
+      head.set(body.compile(prog,
+           test.compileTo(tmp,
+                new Cond(tmp,
+                     prog.block(body.compile(prog, loop)),
+                     prog.block(next)))));
+
+      return loop;
+    }
+
+    My code is very similar to the supplied while loop code
+    with some subtle changes. In the supplied while loop 
+    code, head is being set to the return value of a 
+    test.compileTo method. test is an Expression and the 
+    compileTo method generates code that will evaluate the
+    expression before executing the given code. Instead of
+    this, head is now being set by the return value of 
+    body.compile. Body is a Stmt, and the compile method
+    for a statement executes the given Stmt before anything
+    else. This is perfect, because it ensures that the 
+    body of the loop will always execute one time. The 
+    right parameter of body.compile is then passed the 
+    return value of test.compileTo. This is because
+    once the body is executed for the first time, we can go
+    ahead and proceed with the loop as normal.
+
+
+Testing:
+  1.
+  	int i = 0;
+	do {
+  	  i = i+1;
+	} while (i < 0);
+	print i;
+
+	The purpose of this test case was to verify that the 
+	body of a do while loop will run at least once no 
+	matter what. In this instance, the condition of the
+	do while loop will always be false, however the output
+	should still print 1. As expected the output prints one
+	when this test is run.
+
+  2.
+    int i = 0;
+	do {
+  	  i = i+1;
+	} while (i < 1);
+	print i;
+
+	The purpose of this test is to verify that the 
+	conditional of the loop takes into consideration the
+	changes that the body had on the variable i during the
+	first execution before any evaluation of the 
+	conditional occured. The output of this test should be
+	1. 
+
+  3.
+    int i = 0;
+	do {
+  	  i = i+1;
+	} while (i < 5);
+	print i;
+
+	This is just a generic test to ensure that the do while
+	loop is functioning as a regular while loop does. The 
+	output should be 5.
+
+b)
+
+c)
+
+d)
