@@ -1,0 +1,13 @@
+// Enumerate some fibonnacci numbers:
+
+int a = 0;
+int b = 1;
+int j = 0;
+while (j < 11) {
+  print a;
+  int c = a + b;
+  a = b;
+  b = c;
+  j = j + 1;
+}
+
