@@ -1,0 +1,4 @@
+procedure max(inp, ref out) {
+  
+}
+var out = 0;

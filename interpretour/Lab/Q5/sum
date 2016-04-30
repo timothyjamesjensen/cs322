@@ -1,0 +1,8 @@
+procedure max(inp, ref out) {
+  out = 0;
+  foreach i => v in inp {
+    out = out + v;
+  }
+  print out;
+}
+var out = 0;

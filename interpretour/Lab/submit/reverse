@@ -1,0 +1,13 @@
+I do not think that it is possible to use a foreach to get
+the reverse of an array with this language. I wanted to
+make an array that was the same length as an input array 
+and set its values in reverse something like this;
+
+  var length = Length(inp);
+  var array = new array[length];
+
+  foreach i => v in inp {
+    array[length-i] = v;
+  }
+
+but that is not possible in this language.

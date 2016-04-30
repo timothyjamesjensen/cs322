@@ -1,0 +1,28 @@
+Mon Apr 18 01:57:01 PDT 2016 :  initialized
+Mon Apr 18 02:17:48 PDT 2016 :  Mult - Passed
+Mon Apr 18 02:17:49 PDT 2016 :  DT - Passed
+Mon Apr 18 02:17:50 PDT 2016 :  Nest - Passed
+Mon Apr 18 02:17:50 PDT 2016 :  Proc - Passed
+Mon Apr 18 02:17:51 PDT 2016 :  Ref - Passed
+Mon Apr 18 02:17:52 PDT 2016 :  FCF - WrongOutput
+Mon Apr 18 02:17:52 PDT 2016 :  Array - Passed
+Mon Apr 18 02:17:53 PDT 2016 :  Array1 - Passed
+Mon Apr 18 02:17:54 PDT 2016 :  Array2 - Passed
+Mon Apr 18 02:17:54 PDT 2016 :  Array3 - WrongOutput
+Mon Apr 18 02:17:55 PDT 2016 :  Array4 - Passed
+Mon Apr 18 02:17:56 PDT 2016 :  Range1 - Passed
+Mon Apr 18 02:17:56 PDT 2016 :  Range2 - Passed
+Mon Apr 18 02:17:57 PDT 2016 :  Length1 - Passed
+Mon Apr 18 02:17:58 PDT 2016 :  Length2 - Passed
+Mon Apr 18 02:17:58 PDT 2016 :  Nth1 - Passed
+Mon Apr 18 02:17:59 PDT 2016 :  Nth2 - Passed
+Mon Apr 18 02:18:00 PDT 2016 :  Foreach1 - Passed
+Mon Apr 18 02:18:00 PDT 2016 :  Foreach2 - Passed
+Mon Apr 18 02:18:01 PDT 2016 :  Foreach3 - WrongOutput
+Mon Apr 18 02:18:01 PDT 2016 :  no submission for Question 1
+Mon Apr 18 02:18:01 PDT 2016 :  use max for Question 5(a)
+Mon Apr 18 02:18:01 PDT 2016 :  use maxIndex for Question 5(b)
+Mon Apr 18 02:18:01 PDT 2016 :  use sum for Question 5(c)
+Mon Apr 18 02:18:01 PDT 2016 :  use reverse for Question 5(d)
+Mon Apr 18 02:18:01 PDT 2016 :  use map for Question 5(e)
+Mon Apr 18 02:18:01 PDT 2016 :  made submit.zip

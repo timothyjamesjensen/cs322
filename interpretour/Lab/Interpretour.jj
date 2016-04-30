@@ -1,0 +1,232 @@
+//----------------------------------------------------------------------------
+// This file provides an implementation of a parser for the Interpretour
+// languages, up to and including all of the features that are included in
+// the final stage (FCF, first-class functions).  You should be aware that
+// this code has only been lightly tested and that it may contain bugs;
+// please let me know if you find any!
+//
+// You are welcome to use this code to help in testing your solutions to
+// the Homework 1 exercises, but this is not required.  I have included
+// the productions that I used to support the new array features that are
+// introduced in the homework exercise, but they are commented out.  You
+// can remove the comments to reintroduce them as you work through the
+// exercises.  Note that the grammar I've used matches the format used in
+// the assignment text, and in the various print() methods.
+//
+// The parser is implemented using the javacc tool that you have likely
+// seen in CS 321, but you are not expected to have special knowledge of
+// javacc in this class.  The parser can be built and executed as follows
+// (assuming that this file, Interpretour.jj, is included in the same
+// directory as all of the other Interpretour source files---such as
+// Src.java---and that you have working versions of javacc and javac, as
+// on the Linuxlab machines):
+//
+//    $ javacc Interpretour.jj
+//    $ javac  *.java
+//
+// To run the parser on input stored in a file called prog.src, use:
+//
+//    $ java Interpretour < prog.src
+//
+// If you prefer, you can type your code in directly at the command prompt
+// (press newline and then ^D, at least on a Unix machine, to signal the
+// end of the input file).  In the following example, I typed all of the
+// code for a program on one line, hit newline, then ^D, and then the
+// Interpretour took over, producing a pretty-printed version of the code
+// listing before running the same program:
+//
+//    $ java Interpretour
+//    procedure printTwice(x) { print x; print x; } printTwice(21);
+//    Complete program is:
+//        procedure printTwice(x) {
+//          print x;
+//          print x;
+//        }
+//        printTwice(21);
+//    
+//    Running program:
+//    Output: 21
+//    Output: 21
+//    Done!
+//
+//    $
+//
+//-- Define a main program / entry point for the parser: ---------------------
+
+PARSER_BEGIN(Interpretour)
+public class Interpretour {
+  public static void main(String args[]) throws ParseException {
+      new Interpretour(System.in);  // Read from standard input
+      Program p = prog();
+      System.out.println("Complete program is:");
+      p.print();
+      System.out.println("Running program:");
+      p.run();
+      System.out.println("Done!");
+  }
+}
+PARSER_END(Interpretour)
+
+//-- Define the grammatical rules for programs: ------------------------------
+
+Program prog() : { Proc[] procs; Stmt body; } {
+  procs=procs(0) body=stmts()
+  { return new Program(procs, body); }
+}
+
+Proc[] procs(int n) : { Proc p; Proc[] ps; } {
+  (  p=proc() ps=procs(n+1) { ps[n]=p; }
+  | { ps = new Proc[n]; })
+  { return ps; }
+}
+
+Proc proc() : { Token t; Formal[] fs; Stmt s; } {
+  "procedure" t=<IDENT> "(" fs=formals() ")" s=block()
+  { return new Proc(t.image, fs, s); }
+}
+
+Formal[] formals() : { Formal f; Formal[] fs; } {
+  ( f=formal() fs=nformals(1) { fs[0]=f; }
+  | { fs = new Formal[0]; })
+  { return fs; }
+}
+
+Formal[] nformals(int n) : { Formal f; Formal[] fs; } {
+  ( "," f=formal() fs=nformals(n+1) { fs[n]=f; }
+  | { fs = new Formal[n]; })
+  { return fs; }
+}
+
+Formal formal() : { Token t; } {
+  "ref" t=<IDENT> { return new ByRef(t.image); }
+| t=<IDENT>       { return new Formal(t.image); }
+}
+
+//-- Define the grammatical rules for statements: ----------------------------
+
+Stmt block() : { Stmt s1; } {
+  "{" s1=stmts() "}"
+  { return s1; }
+}
+
+Stmt stmt() : { Token t, v; Expr e; Stmt s1, s2; Expr[] a; } {
+  s1=block()
+  { return s1; }
+| t=<IDENT> (
+    "=" e=expr()     ";" { return new Assign(t.image, e); }
+  | "(" a=args() ")" ";" { return new Call(t.image, a); }
+  )
+| "if" "(" e=expr() ")" s1=stmt() "else" s2=stmt()
+   { return new If(e, s1, s2); }
+| "while" "(" e=expr() ")" s1=stmt()
+   { return new While(e, s1); }
+| "print" e=expr() ";"
+   { return new Print(e); }
+| "var" t=<IDENT> "=" e=expr() ";"
+   { return new VarDecl(t.image, e); }
+| "foreach" t=<IDENT> "=>" v=<IDENT> "in" e=expr() s1=block()
+   { return new Foreach(t.image, v.image, e, s1); }
+}
+
+Stmt stmts() : { Stmt s1, s2; } { // one or more statements:
+  s1=stmt() [ s2=stmts() { s1=new Seq(s1,s2); } ]
+  { return s1; }
+}
+
+Expr[] args() : { Expr e; Expr[] a; } {
+  ( e=expr() a=nargs(1) { a[0]=e; }
+  | { a = new Expr[0]; })
+  { return a; }
+}
+
+Expr[] nargs(int n) : { Expr e; Expr[] a; } {
+  ( "," e=expr() a=nargs(n+1) { a[n]=e; }
+  | { a = new Expr[n]; })
+  { return a; }
+}
+
+//-- Define the grammatical rules for expressions: ---------------------------
+
+Expr expr() : { Expr e; } {
+  (e=rel() | e=lambda()) { return e; }
+}
+
+Expr lambda() : { Token t; Expr e; } {
+  "\\" t=<IDENT> "->" e=expr()
+  { return new Lambda(t.image, e); }
+}
+
+Expr rel() : { Expr m, n; } {
+  n=term() ( ("<"  m=term() { n = new LT(n,m); })
+           | ("==" m=term() { n = new EqEq(n,m); }))*
+  { return n; }
+}
+
+Expr term() : { Expr m, n; } {
+  n=factor() ( ("+" m=factor() { n = new Plus(n,m); })
+             | ("-" m=factor() { n = new Minus(n,m); }))*
+  { return n; }
+}
+
+Expr factor() : { Expr m, n; } {
+  n=app() ( ("*" m=app() { n = new Mult(n,m); }))*
+  { return n; }
+}
+
+Expr app() : { Expr m, n; } {
+  n=atom() ( ("@" m=atom()     { n = new Apply(n,m); })
+         | ("[" m=expr() "]" { n = new Nth(n, m); })
+           )*
+  { return n; }
+}
+
+Expr atom() : { Expr e; Token t; } {
+  "(" e=expr() ")"  { return e; }
+| t=<INTLIT>        { return new Int(Integer.parseInt(t.image)); }
+| t=<IDENT>         { return new Var(t.image); }
+| "[" e=array() "]" { return e; }
+| e=call()          { return e; }
+}
+
+Expr array() : { Expr e1, e2; Expr[] es; } {
+  (e1=expr() (".." e2=expr()   { return new Range(e1, e2); }
+             |","  es=exprs(1) { es[0]=e1; return new Array(es); }
+             |                 { return new Array(new Expr[] {e1}); }))
+| { return new Array(new Expr[0]); }
+}
+
+Expr[] exprs(int soFar) : { Expr e1; Expr[] es; } {
+  e1=expr() ("," es=exprs(soFar+1) | { es = new Expr[soFar+1]; })
+  { es[soFar]=e1; return es; }
+}
+
+Expr call() : { Expr e; } {
+  "length"  "(" e=expr() ")" { return new Length(e);  }
+}
+
+//-- Define the lexical structure of an input language: ----------------------
+
+// Input elements that should be ignored/skipped:
+SKIP : {
+  " "
+| "\t"
+| "\n"
+| "\r"
+| <"//" (~["\n","\r"])* ("\n" | "\r" | "\r\n")>
+| <"/*" (~["*"])* ("*" | ~["*","/"] (~["*"])* "*")* "/">
+}
+
+// Lexemes that should be reported as valid tokens:
+TOKEN : {
+  <INTLIT    : <ZERO> | <POSDIGIT> (<DIGIT>)*>
+| <#POSDIGIT : ["1"-"9"]>
+| <#ZERO     : "0">
+| <#DIGIT    : <ZERO> | <POSDIGIT> >
+}
+
+TOKEN : {
+  <IDENT : ["a"-"z"] (["a"-"z","A"-"Z","0"-"9","_"])*>
+}
+
+//----------------------------------------------------------------------------
+

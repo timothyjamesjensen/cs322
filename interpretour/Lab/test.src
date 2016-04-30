@@ -1,0 +1,6 @@
+var array = ([1, 2] + [3, 4]);
+      var range = [(1 + 2)..(3 + 4)];
+      var other = (([1,2] + 1) + [2, 3, 4]);
+      print ((array + range) + other);
+      print length(other);
+      print range[4];
