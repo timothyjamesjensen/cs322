@@ -150,7 +150,7 @@ abstract class Expr {
     }
   }
 
-  abstract Code compileTo(Tmp reg, Code next);
+  abstract Code compileTo(Tmp reg, Code next, Program prog);
 }
 
 class Var extends Expr {
@@ -168,7 +168,7 @@ class Var extends Expr {
     return te.getType();
   }
 
-  Code compileTo(Tmp reg, Code next) {
+  Code compileTo(Tmp reg, Code next, Program prog) {
     return new Load(reg, te.getLoc(), next);
   }
 }
@@ -183,7 +183,7 @@ class Int extends Expr {
     return Type.INT;
   }
 
-  Code compileTo(Tmp reg, Code next) {
+  Code compileTo(Tmp reg, Code next, Program prog) {
     return new Immed(reg, num, next);
   }
 }
@@ -198,7 +198,7 @@ class Bool extends Expr {
     return Type.BOOLEAN;
   }
 
-  Code compileTo(Tmp reg, Code next) {
+  Code compileTo(Tmp reg, Code next, Program prog) {
     return new Immed(reg, (val ? 1 : 0), next);
   }
 }
@@ -226,7 +226,7 @@ class Nth extends Expr {
     return elemType;
   }
 
-  Code compileTo(Tmp reg, Code next) {
+  Code compileTo(Tmp reg, Code next, Program prog) {
     System.out.println("Array indexing not implemented");
     System.exit(1);
     return next; // not reached
@@ -259,11 +259,11 @@ class Plus extends ArithBinExpr {
   Plus(Expr l, Expr r) { super(l, r); }
   String op() { return "+"; }
 
-  Code compileTo(Tmp reg, Code next) {
+  Code compileTo(Tmp reg, Code next, Program prog) {
     Tmp tmp = new Tmp();
     return l.compileTo(tmp,
            r.compileTo(reg,
-           new Op(reg, tmp, '+', reg, next)));
+           new Op(reg, tmp, '+', reg, next),prog),prog);
   }
 }
 
@@ -271,11 +271,11 @@ class Minus extends ArithBinExpr {
   Minus(Expr l, Expr r) { super(l, r); }
   String op() { return "-"; }
 
-  Code compileTo(Tmp reg, Code next) {
+  Code compileTo(Tmp reg, Code next, Program prog) {
     Tmp tmp = new Tmp();
     return l.compileTo(tmp,
            r.compileTo(reg,
-           new Op(reg, tmp, '-', reg, next)));
+           new Op(reg, tmp, '-', reg, next),prog),prog);
   }
 }
 
@@ -283,11 +283,11 @@ class Mult extends ArithBinExpr {
   Mult(Expr l, Expr r) { super(l, r); }
   String op() { return "*"; }
 
-  Code compileTo(Tmp reg, Code next) {
+  Code compileTo(Tmp reg, Code next, Program prog) {
     Tmp tmp = new Tmp();
     return l.compileTo(tmp,
            r.compileTo(reg,
-           new Op(reg, tmp, '*', reg, next)));
+           new Op(reg, tmp, '*', reg, next),prog),prog);
   }
 }
 
@@ -305,11 +305,11 @@ class LT extends RelBinExpr {
   LT(Expr l, Expr r) { super(l, r); }
   String op() { return "<"; }
 
-  Code compileTo(Tmp reg, Code next) {
+  Code compileTo(Tmp reg, Code next, Program prog) {
     Tmp tmp = new Tmp();
     return l.compileTo(tmp,
            r.compileTo(reg,
-           new Op(reg, tmp, '<', reg, next)));
+           new Op(reg, tmp, '<', reg, next),prog),prog);
   }
 }
 
@@ -317,11 +317,11 @@ class EqEq extends RelBinExpr {
   EqEq(Expr l, Expr r) { super(l, r); }
   String op() { return "=="; }
 
-  Code compileTo(Tmp reg, Code next) {
+  Code compileTo(Tmp reg, Code next, Program prog) {
     Tmp tmp = new Tmp();
     return l.compileTo(tmp,
            r.compileTo(reg,
-           new Op(reg, tmp, '=', reg, next)));
+           new Op(reg, tmp, '=', reg, next),prog),prog);
   }
 }
 
@@ -340,10 +340,19 @@ class LAnd extends LogicBinExpr {
 
   String op() { return "&&"; }
 
-  Code compileTo(Tmp reg, Code next) {
-    System.err.println("LAnd compile() method NOT IMPLEMENTED");
-    System.exit(1);
-    return next; // not reached
+  Code compileTo(Tmp reg, Code next, Program prog) {
+    Code got = new Goto(prog.block(next));
+
+    return l.compileTo(reg, 
+		       new Cond(reg, 
+                                prog.block(r.compileTo(reg,
+			                               new Cond(reg, 
+                                                                prog.block(new Immed(reg, 1, got)),
+				                                prog.block(new Immed(reg, 0, got))),
+                                                       prog)),
+                                prog.block(new Immed(reg, 0, got))), 
+                                prog);    
+                        
   }
 }
 
@@ -352,10 +361,19 @@ class LOr extends LogicBinExpr {
 
   String op() { return "||"; }
 
-  Code compileTo(Tmp reg, Code next) {
-    System.err.println("LOr compile() method NOT IMPLEMENTED");
-    System.exit(1);
-    return next; // not reached
+  Code compileTo(Tmp reg, Code next, Program prog) {
+    Code got = new Goto(prog.block(next));
+
+    return l.compileTo(reg,
+                       new Cond(reg,
+                                prog.block(new Immed(reg, 1, got)),
+                                prog.block(r.compileTo(reg,
+                                                       new Cond(reg,
+                                                                prog.block(new Immed(reg, 1, got)),
+                                                                prog.block(new Immed(reg, 0, got))),
+                                                       prog))),
+                       prog);
+    
   }
 }
 
@@ -432,7 +450,7 @@ class Assign extends Stmt {
 
   Code compile(Program prog, Code next) {
     Tmp tmp = new Tmp();
-    return rhs.compileTo(tmp, new Store(te.getLoc(), tmp, next));
+    return rhs.compileTo(tmp, new Store(te.getLoc(), tmp, next),prog);
   }
 }
 
@@ -465,7 +483,7 @@ class While extends Stmt {
     head.set(test.compileTo(tmp,
              new Cond(tmp,
                       prog.block(body.compile(prog, loop)),
-                      prog.block(next))));
+                      prog.block(next)),prog));
     return loop;
   }
 }
@@ -507,7 +525,7 @@ class If extends Stmt {
     Block t   = prog.block(ifTrue.compile(prog, got));
     Block f   = (ifFalse==null)
                  ? n : prog.block(ifFalse.compile(prog, got));
-    return test.compileTo(tmp, new Cond(tmp, t, f));
+    return test.compileTo(tmp, new Cond(tmp, t, f),prog);
   }
 }
 
@@ -528,7 +546,7 @@ class Print extends Stmt {
 
   Code compile(Program prog, Code next) {
     Tmp tmp = new Tmp();
-    return exp.compileTo(tmp, new PCode(tmp, next));
+    return exp.compileTo(tmp, new PCode(tmp, next),prog);
   }
 }
 
@@ -549,7 +567,7 @@ class Return extends Stmt {
 
   Code compile(Program prog, Code next) {
     Tmp tmp = new Tmp();
-    return exp.compileTo(tmp, new Ret(tmp));
+    return exp.compileTo(tmp, new Ret(tmp),prog);
   }
 }
 
@@ -626,7 +644,7 @@ class InitVarIntro extends VarIntro {
     Tmp tmp = new Tmp();
     return expr.compileTo(tmp,
            new Store(te.getLoc(), tmp,
-           next));
+           next),null);
   }
 }
 
@@ -664,7 +682,7 @@ class DoWhile extends Stmt {
              test.compileTo(tmp,
                   new Cond(tmp,
                        prog.block(body.compile(prog, loop)),
-                       prog.block(next)))));
+                       prog.block(next)),prog)));
           
     return loop;
   }
