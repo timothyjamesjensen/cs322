@@ -4,48 +4,48 @@ Assignment 2
 
 a) do ... while loops
 
-  Implementation:
-  	Implementing a do while loop is slightly different
-  	to a standard while loop in that the body of the
-  	loop precedes the condition. There is at least 
-  	one pass through. Thus I needed to find a way to
-  	ensure that the body would always execute at least
-  	one time. The following is my Compile method.
+Implementation:
+  Implementing a do while loop is slightly different
+  to a standard while loop in that the body of the
+  loop precedes the condition. There is at least 
+  one pass through. Thus I needed to find a way to
+  ensure that the body would always execute at least
+  one time. The following is my Compile method.
 
-  	Code compile(Program prog, Code next) {
-      Block head = prog.block();
-      Code  loop = new Goto(head);
-      Tmp   tmp  = new Tmp();
+  Code compile(Program prog, Code next) {
+    Block head = prog.block();
+    Code  loop = new Goto(head);
+    Tmp   tmp  = new Tmp();
 
-      head.set(body.compile(prog,
-           test.compileTo(tmp,
-                new Cond(tmp,
-                     prog.block(body.compile(prog, loop)),
-                     prog.block(next)))));
+    head.set(body.compile(prog,
+          test.compileTo(tmp,
+              new Cond(tmp,
+                       prog.block(body.compile(prog, loop)),
+                       prog.block(next)))));
 
       return loop;
     }
 
-    My code is very similar to the supplied while loop code
-    with some subtle changes. In the supplied while loop 
-    code, head is being set to the return value of a 
-    test.compileTo method. test is an Expression and the 
-    compileTo method generates code that will evaluate the
-    expression before executing the given code. Instead of
-    this, head is now being set by the return value of 
-    body.compile. Body is a Stmt, and the compile method
-    for a statement executes the given Stmt before anything
-    else. This is perfect, because it ensures that the 
-    body of the loop will always execute one time. The 
-    right parameter of body.compile is then passed the 
-    return value of test.compileTo. This is because
-    once the body is executed for the first time, we can go
-    ahead and proceed with the loop as normal.
+  My code is very similar to the supplied while loop code
+  with some subtle changes. In the supplied while loop 
+  code, head is being set to the return value of a 
+  test.compileTo method. test is an Expression and the 
+  compileTo method generates code that will evaluate the
+  expression before executing the given code. Instead of
+  this, head is now being set by the return value of 
+  body.compile. Body is a Stmt, and the compile method
+  for a statement executes the given Stmt before anything
+  else. This is perfect, because it ensures that the 
+  body of the loop will always execute one time. The 
+  right parameter of body.compile is then passed the 
+  return value of test.compileTo. This is because
+  once the body is executed for the first time, we can go
+  ahead and proceed with the loop as normal.
 
 
 Testing:
   1.
-  	int i = 0;
+  int i = 0;
 	do {
   	  i = i+1;
 	} while (i < 0);
@@ -59,7 +59,7 @@ Testing:
 	when this test is run.
 
   2.
-    int i = 0;
+  int i = 0;
 	do {
   	  i = i+1;
 	} while (i < 1);
@@ -73,7 +73,7 @@ Testing:
 	1. 
 
   3.
-    int i = 0;
+  int i = 0;
 	do {
   	  i = i+1;
 	} while (i < 5);
@@ -83,7 +83,137 @@ Testing:
 	loop is functioning as a regular while loop does. The 
 	output should be 5.
 
-b)
+b) the && and || operatiors
+
+Implementation.
+
+The first step towards implementing LAnd and LOr was preparing
+the Expr class to be able to create new basic prog blocks. In
+order to achieve this, the method definition for compileTo in 
+Expr as well as all subclasses of Expr was change to this:
+
+   compileTo(Tmp reg, Code next, Program prog);
+
+Following this, all calls of compileTo were changed to accept
+either prog or null as a parameter. Depending on the method,
+you don't need to pass prog or don't have access to it. For the
+'if' 'doWhile' and 'While' constructs we definately need to pass
+prog, but InitVarIntro doesn't even have access to prog so we
+pass null.
+
+The following is my compileTo method for LAnd
+
+Code compileTo(Tmp reg, Code next, Program prog) {
+    Code got = new Goto(prog.block(next));
+
+    return l.compileTo(reg,
+                       new Cond(reg,
+                                prog.block(r.compileTo(reg,
+                                       new Cond(reg,
+                                                prog.block(new Immed(reg, 1, got)),
+                                                prog.block(new Immed(reg, 0, got))),
+                                        prog)),
+                                prog.block(new Immed(reg, 0, got))),
+                                prog);
+
+  }
+
+The code can be somewhat hard to follow so I will do my best at explaining
+the logic behind what is going on. The breakdown goes something like this:
+
+First thing is executing l.compileTo, and passing a new Cond as the 'next'
+parameter of what Code to execute. If l evaluates to false, the entire
+statement evaluates to false (because its &&) and we don't need to even
+consider the right hand side, we immediately jump to a piece of code that
+loads false into the results register. If l evaluates to true then we 
+need to test the right hand side. r.compileTo is then executed, with a
+second Cond as the 'next' parameter. In this case, if r evaluates to true
+we will immediately jump to a piece of code that loads true, if r instead
+evaluates to false we will jump to a piece of code that loads false.
+
+The following is my code for LOr
+
+ Code compileTo(Tmp reg, Code next, Program prog) {
+    Code got = new Goto(prog.block(next));
+
+    return l.compileTo(reg,
+                       new Cond(reg,
+                                prog.block(new Immed(reg, 1, got)),
+                                prog.block(r.compileTo(reg,
+                                       new Cond(reg,
+                                                prog.block(new Immed(reg, 1, got)),
+                                                prog.block(new Immed(reg, 0, got))),
+                                        prog))),
+                       prog);
+
+  }
+
+The code for LOr is very similar to the code for LAnd, with some subtle 
+differences. With LOr, we will load true if either l or r evaluates to 
+true. Thus in our approach, if l evaluates to true, we can immediately 
+jump to a piece of code that loads true. If l is false, we then need to
+evaluate r. Depending on whether or not r is true or false we then can
+immediately jump to a piece of code that loads true or false.
+
+I found the following code from the week 2 lab solutions to be very
+helpful in my solution to this task. I knew from the start that I would
+need to have nested conditionals, but this code showed me what my basic 
+prog blocks needed to look like.
+
+Code got = new Goto(prog.block(next));
+    return exp.compileTo(prog, reg,
+           new Cond(reg, prog.block(new Immed(reg, 0, got)),
+                         prog.block(new Immed(reg, 1, got))));
+
+Testing:
+  1. 
+  int i = 0;
+  int x = 0;
+  while (x < 5) {
+    if (x==2 && i==0) {
+      print x;
+    }
+    x=x+1;
+  }
+
+  This is a simple test of &&. It tests for false positives because the
+  if conditional is tested 5 times but it should only be true once. The
+  output of this program should be 2.
+
+  2.
+  int i = 0;
+  int x = 0;
+  while (i<5) {
+    if (x==0 && i==3) {
+      print(i);
+    }
+    i=i+1;
+  }
+
+  This test is very similar to test 1 but I thought it was important. A
+  careful observer will notice that in test 1, we don't really know if
+  the right hand side of the && is really doing anything. In this test,
+  the left hand side is fixed, and only the right hand side is changing.
+  Combined with test 1, it shows that both the right hand and left hand
+  side are being evaluated for truth, and both are necessary. Output 
+  should be 3.
+
+  3.
+  int i = 0;
+  int x = 0;
+  while (x<5 && i<5) {
+    if (x==2 || i==4) {
+      print(i);
+    }
+    x=x+1;
+    i=i+1;
+  }
+
+  In this test, && and || are both utilized, but it is mainly to test ||.
+  While x and i are both less than 5, the if statement conditional will
+  be tested. It will be true once when x == 2 and once again when i == 4.
+  The output of this program should be 2 and then 4.
+
 
 c)
 
