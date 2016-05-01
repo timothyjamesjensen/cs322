@@ -402,7 +402,11 @@ abstract class Stmt {
   abstract TypeEnv check(TypeEnv env, boolean canContinue, boolean canBreak)
    throws StaticError;
 
-  abstract Code compile(Program prog, Code next);
+  abstract Code compile(Program prog, Code next, Block breakTo, Code continueTo);
+
+  Code compile(Program prog, Code next) {
+    return compile(prog, next, null, null);
+  }
 }
 
 class Seq extends Stmt {
@@ -420,8 +424,8 @@ class Seq extends Stmt {
                    canContinue, canBreak);
   }
 
-  Code compile(Program prog, Code next) {
-    return l.compile(prog, r.compile(prog, next));
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
+    return l.compile(prog, r.compile(prog, next, breakTo, continueTo), breakTo, continueTo);
   }
 }
 
@@ -448,7 +452,7 @@ class Assign extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
     Tmp tmp = new Tmp();
     return rhs.compileTo(tmp, new Store(te.getLoc(), tmp, next),prog);
   }
@@ -476,13 +480,13 @@ class While extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
     Block head = prog.block();
     Code  loop = new Goto(head);
     Tmp   tmp  = new Tmp();
     head.set(test.compileTo(tmp,
              new Cond(tmp,
-                      prog.block(body.compile(prog, loop)),
+                      prog.block(body.compile(prog, loop, prog.block(next), loop)),
                       prog.block(next)),prog));
     return loop;
   }
@@ -518,13 +522,13 @@ class If extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
     Tmp   tmp = new Tmp();
     Block n   = prog.block(next);
     Goto  got = new Goto(n);
-    Block t   = prog.block(ifTrue.compile(prog, got));
+    Block t   = prog.block(ifTrue.compile(prog, got, breakTo, continueTo));
     Block f   = (ifFalse==null)
-                 ? n : prog.block(ifFalse.compile(prog, got));
+                 ? n : prog.block(ifFalse.compile(prog, got, breakTo, continueTo));
     return test.compileTo(tmp, new Cond(tmp, t, f),prog);
   }
 }
@@ -544,7 +548,7 @@ class Print extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
     Tmp tmp = new Tmp();
     return exp.compileTo(tmp, new PCode(tmp, next),prog);
   }
@@ -565,7 +569,7 @@ class Return extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
     Tmp tmp = new Tmp();
     return exp.compileTo(tmp, new Ret(tmp),prog);
   }
@@ -594,7 +598,7 @@ class VarDecl extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
     int i = vars.length;
     while (--i>=0) {
       next = vars[i].compile(next);
@@ -673,7 +677,7 @@ class DoWhile extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
     Block head = prog.block();
     Code  loop = new Goto(head);
     Tmp   tmp  = new Tmp();
@@ -681,8 +685,8 @@ class DoWhile extends Stmt {
     head.set(body.compile(prog,
              test.compileTo(tmp,
                   new Cond(tmp,
-                       prog.block(body.compile(prog, loop)),
-                       prog.block(next)),prog)));
+                       prog.block(body.compile(prog, loop, prog.block(next), loop)),
+                       prog.block(next)),prog), prog.block(next), loop));
           
     return loop;
   }
@@ -704,10 +708,8 @@ class Break extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
-    System.err.println("Break compile() method NOT IMPLEMENTED");
-    System.exit(1);
-    return next; // not reached
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
+    return new Goto(breakTo);
   }
 }
 
@@ -727,10 +729,8 @@ class Continue extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
-    System.err.println("Continue compile() method NOT IMPLEMENTED");
-    System.exit(1);
-    return next; // not reached
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
+    return continueTo;
   }
 }
 
@@ -763,7 +763,7 @@ class Switch extends Stmt {
     return env;
   }
 
-  Code compile(Program prog, Code next) {
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
     System.err.println("DoWhile compile() method NOT IMPLEMENTED");
     System.exit(1);
     return next; // not reached
