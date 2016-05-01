@@ -5,6 +5,7 @@ Assignment 2
 a) do ... while loops
 
 Implementation:
+
   Implementing a do while loop is slightly different
   to a standard while loop in that the body of the
   loop precedes the condition. There is at least 
@@ -55,8 +56,8 @@ Testing:
 	body of a do while loop will run at least once no 
 	matter what. In this instance, the condition of the
 	do while loop will always be false, however the output
-	should still print 1. As expected the output prints one
-	when this test is run.
+	should still print 1. As expected the output is:
+    Output: 1
 
   2.
   int i = 0;
@@ -69,8 +70,8 @@ Testing:
 	conditional of the loop takes into consideration the
 	changes that the body had on the variable i during the
 	first execution before any evaluation of the 
-	conditional occured. The output of this test should be
-	1. 
+	conditional occured. The output of this test is
+    Output: 1
 
   3.
   int i = 0;
@@ -81,7 +82,10 @@ Testing:
 
 	This is just a generic test to ensure that the do while
 	loop is functioning as a regular while loop does. The 
-	output should be 5.
+	output is:
+    Output: 5
+
+Additional Notes:
 
 b) the && and || operatiors
 
@@ -178,7 +182,8 @@ Testing:
 
   This is a simple test of &&. It tests for false positives because the
   if conditional is tested 5 times but it should only be true once. The
-  output of this program should be 2.
+  output of this program is: 
+    Output: 2
 
   2.
   int i = 0;
@@ -196,8 +201,8 @@ Testing:
   the left hand side is fixed, and only the right hand side is changing.
   Combined with test 1, it shows that both the right hand and left hand
   side are being evaluated for truth, and both are necessary. Output 
-  should be 3.
-
+  is:
+    Output: 3
   3.
   int i = 0;
   int x = 0;
@@ -212,9 +217,171 @@ Testing:
   In this test, && and || are both utilized, but it is mainly to test ||.
   While x and i are both less than 5, the if statement conditional will
   be tested. It will be true once when x == 2 and once again when i == 4.
-  The output of this program should be 2 and then 4.
+  The output of this program is:
+    Output: 2
+    Output: 4
+
+Additional Notes:
 
 
-c)
+c) the break and continue statements
+
+Implementation
+
+The first steps toward implementing the break and continue statements was
+adding two extra parameters to the compile method defined in the Stmt 
+class and in every subclass of Stmt. I changed the compile method to look
+like this:
+ 
+compile(Program prog, Code next, Block breakTo, Code continueTo);
+
+This created a problem because there is a two parameter compile used in
+Target.java and we are not allowed to change Target.java. So at the 
+suggestion of the instructor I added the following two parameter compile
+method to Stmt.
+
+Code compile(Program prog, Code next) {
+    return compile(prog, next, null, null);
+}
+
+The next step was to modify every place where compile is called by 
+'passing through' the two new parameters I created. I changed the majority
+of calls to compile to look like this
+
+Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
+  return l.compile(prog, next, breakTo, continueTo);
+}
+
+Now it was time to get started on the actual problem at hand, getting 
+break and continue to work. As mentioned by the instructor, this isn't a
+conceptually difficult problem, the challenge is determining the target
+destination for the Goto statements. This ended up not being to difficult.
+If break is called during a loop, it simply needs to Goto 'next' and if
+continue is called during a loop it needs to Goto 'loop'. ALL instances
+of body.compile in my While AND DoWhile constructs were changed to look 
+like this:
+
+  body.compile(prog, loop, prog.block(next), loop)
+
+Thus breakTo becomes a code block for next and continueTo becomes a Goto
+back to the testing of the loop. 
+
+My implementation of compile for break is as follows
+
+  Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
+    return new Goto(breakTo);
+  }
+
+and my implementation of compile for continue
+
+Code compile(Program prog, Code next, Block breakTo, Code continueTo) {
+    return continueTo;
+  }
+
+Both compile methods are super simple and do the same thing. They return a
+Goto to where the program should be pointed next. In the case of 'Break' 
+it should go to what happens immediately after the loop, in the case of
+'Continue', it should go to the evaluating portion of the loop to see if
+the loop should continue or not.
+
+You may notice that breakTo and continueTo are of different types.
+breakTo is a Block and not a Goto. The reason for this is that there was a
+readily available Goto construct for continueTo, but not one for breakTo.
+So instead of creating a new Goto inside the Compile method of While and 
+DoWhile, I chose to instead pass along the Block and create the Goto 
+inside of the compile method for Break.
+
+Testing:
+  1.
+  int i = 0;
+  while (i<5) {
+    if (i==2) {
+      break;
+    }
+    print(i);
+    i=i+1;
+  }
+  int x = 8;
+  print(x);
+
+  This is a simple test that verifies break does indeed break out of a
+  loop, and also that the rest of the program continues to execute 
+  normally, showing that break jumped to the correct place. The output of
+  the program is:
+    Output: 0
+    Output: 1
+    Output: 8
+  The output shows that the break statement is working as expected. The 
+  loop itereates and begins to print out i as it increments. However when
+  i==2, the break statement is called, jumping outside the loop. Thus the
+  furthest that i is printed is when its value is 1. We know that the 
+  break statement takes us to the correct location, because immediately
+  after the loop a new variable x is declared and printed, and this is
+  reflected in the output.
+
+  2.
+  int i = 0;
+  do {
+    i=i+1;
+    if (i==2) {
+      continue;
+    }
+    print(i);
+  } while (i < 5);
+
+  This test ensures that continue is working properly. It also shows that
+  the new break and continue statements will work in a do while loop as
+  well as a traditional while loop. This is important becauase it is easy
+  to neglect one type of loop during testing. This test would work with a 
+  while loop or a do while loop. The output is:
+    Output: 1
+    Output: 3
+    Output: 4
+    Output: 5
+  The test shows that continue is working as expected because when i==2
+  the continue statement is called, skipping the rest of the loop body and
+  going to the loop conditional. 2 is never printed to output, this shows
+  that when i==2 the print(i) statement is skipped because of continue.
+
+  3.
+  int i = 0;
+  int x = 5;
+  while (i < 2) {
+    while (x < 9) {
+      if (x == 7) {
+        break;
+      }
+      print(x);
+      x=x+1;
+    }
+    x=5;
+    print(i);
+    i=i+1;
+  }
+
+  This is easily the most complicated test of the group because it has
+  nested loops. Its purpose is to verify that breaking out of an inner
+  loop will not disrupt the function of the outer loop. The test should 
+  output in order:
+    Output: 5
+    Output: 6
+    Output: 0
+    Output: 5
+    Output: 6
+    Output: 1
+  What happens is, for every iteration of the outer loop, the inner loop is
+  run, but breaks after two iterations, printing 5 and 6 but breaking once
+  x == 7. After the break the outer loop continues, showing expected 
+  functionality.
+
+Additional Notes:
+
+  Break and continue are implented to work from either a while loop of a 
+  do while loop. This doubles the amount of testing that needs to be done
+  because every case of break and continue needs to be tested from both
+  loop constructs. If I was allowed more tests, many of the additional 
+  tests would be almost copies of eachother in order to test the two types
+  of loops.
+
 
 d)
