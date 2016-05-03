@@ -52,7 +52,7 @@ Testing:
 	} while (i < 0);
 	print i;
 
-	The purpose of this test case was to verify that the 
+	The purpose of this test case is to verify that the 
 	body of a do while loop will run at least once no 
 	matter what. In this instance, the condition of the
 	do while loop will always be false, however the output
@@ -85,9 +85,19 @@ Testing:
 	output is:
     Output: 5
 
-Additional Notes:
+Additional Notes: 
+  
+  The implementation of the do..while loop was very straightforward
+  and similar to the while loop implementation that already
+  existed. It really did not require much innovation or many changes
+  that didn't already exist.
+  However, if I were allowed to do more tests, I would probably just
+  do more basic testing to ensure that the body of the loop behaves as 
+  it should, and that there are absolutely no differences between the
+  execution of this, and a regular while loop. Other than that the body
+  is executed once at the start no matter what.
 
-b) the && and || operatiors
+b) the && and || operators
 
 Implementation.
 
@@ -203,6 +213,7 @@ Testing:
   side are being evaluated for truth, and both are necessary. Output 
   is:
     Output: 3
+
   3.
   int i = 0;
   int x = 0;
@@ -222,6 +233,16 @@ Testing:
     Output: 4
 
 Additional Notes:
+
+  I think that there are many different cases for LAnd and LOr that could
+  possibly be tested. If I was able to write more tests, I would write 
+  many more tests that involve only the left hand side of the conditional
+  to ensure that it always behaves as expected. For example, if the left
+  hand side of LOr is true, it should always evaluate to true and it 
+  should not even consider the right hand side. If the left hand side of 
+  LAnd is false, it should always evaluate to false and not even consider
+  the right hand side. There are many tests of this sort that I could 
+  write to solidify that I am receiving expected behavior and results.
 
 
 c) the break and continue statements
@@ -384,4 +405,15 @@ Additional Notes:
   of loops.
 
 
-d)
+d) the switch statement
+
+Implementation
+
+The switch statement proved to be a very difficult challenge to solve.
+
+
+
+
+
+Testing
+Additional Notes
