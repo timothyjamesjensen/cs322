@@ -410,10 +410,86 @@ d) the switch statement
 Implementation
 
 The switch statement proved to be a very difficult challenge to solve.
+Unfortunately I was not able to complete its functionality in the time
+allocated, so here I will write my notes and strategy towards solving it.
 
+The first thing that needed to be done was creating a getter method in
+the NumCase class in order to get the private int num from the compile
+method of switch. This getter could look something like this:
 
+	int getNum() {
+    	return num;
+  	}
 
+This method gives us access to the value of each NumCase, which is vital
+when we are inside the compile method, as we will soon see.
 
+Inside the compile method, we need to loop over the elements in the array,
+checking the value of each numcase in order to see if it matches the value
+of the test. If the values match, we then need to execute the body of that
+specific case, and then continue executing down the rest of the cases.
+
+The following pseudo code represents the basic idea of the loop:
+
+	for (int i=0; i<cases.length; i++) {
+		if (cases[i].getNum() == test.value) {
+			some way to execute all of the bodies from here down
+			break;
+		}
+	}
+
+I think that my basic ideas behind this are solid, I just didn't allocate
+time well enough to implement them.
 
 Testing
+
+I wrote some tests that I would have used to test my switch statement if
+I was able to get it working.
+	1.
+	int one   = 1;
+	int two   = 2;
+	switch (two) {
+		case 1: print(one);
+		case 2: print(two);
+	}
+
+	This is a basic switch statement that makes sure that the right case
+	is found and executed without worrying about default case or
+	executing all following cases. Expected Output:
+		Output: 2
+	2.
+	int one   = 1;
+	int two   = 2;
+	int three = 3;
+	int four  = 4;
+	switch (two) {
+		case 1: print(one);
+		case 2: print(two);
+		case 3: print(three); break;
+		case 4: print(four);
+	}
+
+	This test shows off some of the more advanced features of the switch
+	statement. Expected Output:
+		Output: 2
+		Output: 3
+	This test ensures that the body's following the match will execute, 
+	two is the match so 2 is printed, but 3 follows two so 3 is also 
+	printed. There is also a break in case three, so the program exits
+	the switch statement and 4 is not printed.
+	
+	3.
+	int one   = 1;
+	int two   = 2;
+	int three = 3;
+	switch(three) {
+		case 1: print(one);
+		case 2: print(two);
+		default: print(three);
+	}
+	
+	This test showcases that the default case should run if there is no 
+	match found. Expected output:
+		Output: 3
+		
 Additional Notes
