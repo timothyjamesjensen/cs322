@@ -36,7 +36,7 @@ class Assembly {
 
     /** Set the platform flag for this machine.
      */
-    static final int platform = PLEASE_CHECK_THE_README_FILE;
+    static final int platform = LINUX;
 
     /** A convenience method that creates an assembly object for
      *  a named output file.
