@@ -1,0 +1,34 @@
+int e   = 54*78;
+boolean que = true;
+int arc = 0;
+int w   = 11;
+
+boolean pudding(int edi, int esi, int ecx, int edx, int r8d, int r9d, int rbp) {
+  // Order of operations and parens important for
+  // generation of xchgl
+  int first = rbp - (esi - esi);
+  // get xchgl
+  if (que) {
+    print(949515015);
+  }
+  // Order of operations and pares important for
+  // generation of xchgl
+  int second = (r8d - (edi - edx)) * 4;
+  return (first==second);
+}
+
+void main() {
+  while(que) {
+    print(e);
+    e = e+8;
+  }
+}
+
+void ante(int edi, int esi) {
+  int x = esi - e;
+  unicorn(x+1);
+}
+
+void unicorn(int edi) {
+  print(edi);
+}
