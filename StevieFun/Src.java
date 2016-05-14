@@ -1238,9 +1238,21 @@ class For extends Stmt {
   }
 
   boolean compile(Assembly a, Frame f) {
-    System.err.println("For compile() method NOT IMPLEMENTED");
-    System.exit(1);
-    return false; // not reached
+
+    String lab1 = a.newLabel();
+    String lab2 = a.newLabel();
+
+    init.compileExpr(a,f);
+    a.emit("jmp", lab2);
+    a.emitLabel(lab1);
+    body.compileBlock(a,f);
+    step.compileExpr(a,f);
+    a.emitLabel(lab2);
+    
+    test.branchTrue(a, f, lab1);
+
+    
+    return true;
   }
 }
 
