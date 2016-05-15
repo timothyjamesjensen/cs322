@@ -1,0 +1,38 @@
+boolean compile(Assembly a, Frame f) {
+    /* In Regards to all the checks for whether or not
+       init, test, and step are null. The for loop can
+       still execute if these are null. however the
+       generated assembly and behavior will be much
+       different. I.E. if test is null it will be an
+       infinite loop. (a break could end the loop)
+    */
+
+    String lab1 = a.newLabel();
+    String lab2 = a.newLabel();
+
+    // make sure init isn't null
+    if (init!=null) {
+      init.compileExpr(a,f);
+    }
+    a.emit("jmp", lab2);
+    a.emitLabel(lab1);
+    body.compileBlock(a,f);
+    // make sure step isn't null
+    if (step!=null) {
+      step.compileExpr(a,f);
+    }
+    a.emitLabel(lab2);
+    // make sure test isn't null
+    if (test!=null) {
+      test.branchTrue(a, f, lab1);
+    } else {
+     // if test is null, loop forever.
+     // this is accomplished by making jmp
+     // l1 i.e. the body of the loop
+      a.emit("jmp", lab1);
+    }
+
+
+    return true;
+}
+
