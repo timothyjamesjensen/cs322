@@ -1,11 +1,11 @@
 boolean compile(Assembly a, Frame f) {
-    /* In Regards to all the checks for whether or not
-       init, test, and step are null. The for loop can
-       still execute if these are null. however the
-       generated assembly and behavior will be much
-       different. I.E. if test is null it will be an
-       infinite loop. (a break could end the loop)
-    */
+    /** In Regards to all the checks for whether or not
+     *  init, test, and step are null. The for loop can
+     *  still execute if these are null. however the
+     *  generated assembly and behavior will be much
+     *  different. I.E. if test is null it will be an
+     *  infinite loop. (a break could end the loop)
+     */
 
     String lab1 = a.newLabel();
     String lab2 = a.newLabel();
