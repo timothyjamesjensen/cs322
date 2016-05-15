@@ -1,20 +1,44 @@
+/** Four or more distinct ways that my code may differ from the original source program
+ *
+ *  1. Variable and Parameter names. Other than the global variables, the
+ *     given assembly file gives me no way to determine the names of the 
+ *     parameters or variables used in the original program.
+ *
+ *  2. Comments. The assembly ignores comments (as it should), however this
+ *     means that my code may appear very different than the orignal assembly
+ *     due to the comments that I have included.
+ *
+ *  3. Whitespace. Whitespace can drastically change the appearance of a 
+ *     source program and the assembly gives no way to determine whitespace.
+ *     I use whitepace between all mathematical operands, but this doesn't mean
+ *     that the original program did the same.
+ * 
+ *  4. Parenthesis. While the placement of parenthesis matter in some situations
+ *     such as where I am generating xchgl, 'rbp - (esi - esi)', there are also
+ *     areas in the code where I have placed parenthesis that do not affect the 
+ *     assembly, and the original source code may not include these parens. One
+ *     Instance of this is the return statement for the 'pudding' method. My return
+ *     statement looks like 'return (first < second);'. However the original source
+ *     code could look like 'return first < second;' and the assembly would be 
+ *     exactly the same.
+*/
+
 int e   = 54*78;
 boolean que = true;
 int arc = 0;
-int w   = 11;
+int w = 11;
 
 boolean pudding(int edi, int esi, int ecx, int edx, int r8d, int r9d, int rbp) {
   // Order of operations and parens important for
   // generation of xchgl
   int first = rbp - (esi - esi);
-  // get xchgl
   if (que) {
     print(949515015);
   }
-  // Order of operations and pares important for
+  // Order of operations and parens important for
   // generation of xchgl
   int second = (r8d - (edi - edx)) * 4;
-  return (first<second);
+  return (first < second);
 }
 
 void main() {
@@ -23,7 +47,7 @@ void main() {
     e = e + 8;
   }  
   print(2016 - (w * 7));
-  print(ante(w-13, 102));
+  print(ante(w - 13, 102));
 }
 
 int ante(int edi, int esi) {
