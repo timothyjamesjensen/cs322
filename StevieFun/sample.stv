@@ -1,0 +1,20 @@
+
+void main() {
+  int x = 25;
+  print byref(x, 23);
+  print x;
+}
+
+int byref(int x, int y) {
+  redirect(x);
+  redirect(y);
+  return x + y;
+}
+
+void redirect(int x) {
+  increment(x);
+}
+
+void increment(int y) {
+  y = y + 1;
+}
