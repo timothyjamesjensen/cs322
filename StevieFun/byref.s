@@ -52,6 +52,39 @@ Xmain:
 Xbyref:
 	pushq	%rbp
 	movq	%rsp, %rbp
+# OPPORTUNITY 2
+#
+#
+# In the following assembly code, the registers
+# rsi and rdi are saved to the stack multiple
+# times. They are saved to the stack every time
+# that there is a function call(twice) because the
+# compiler can't tell if the function call will 
+# modify the values in the registers and it is
+# trying to preserve the values. However this is 
+# wasted effort if the function call doesn't use a
+# saved register. How can we avoid this wasted effort
+# and cut down on the total number of saves?
+#
+# The answer is by using caller and callee saves.
+# We can designate some registers to store temporary
+# values that can be used by either the caller or the
+# callee. For example, we could change the assembly to 
+# look something like this to handle %rsi
+# 
+# pushq %r12
+# ...
+# movl %esi, %r12d
+# ...
+# call xredirect
+# ...
+# call xredirect
+# ...
+# popq %r12d
+#
+# We can use this technique to cut down on the stack space
+# being uses as well as REDUCE the total number of saves.
+
 	pushq	%rsi
 	pushq	%rdi
 	movq	-16(%rbp), %rdi # load the address of where 25 is stored
