@@ -17,8 +17,10 @@ Xmain:
 	movq	%rsp, %rbp
 	movl	$25, %eax
 	pushq	%rax
-	movl	-8(%rbp), %edi
-	movl	$23, %esi
+	leaq	-8(%rbp), %rdi   # load the address
+	movl	$23, %eax        
+        pushq   %rax             # push 23 onto stack
+        leaq    -16(%rbp), %rsi  # load the address
 	call	Xbyref
 	movq	%rax, %rdi
 	call	Xprint
@@ -34,18 +36,18 @@ Xbyref:
 	movq	%rsp, %rbp
 	pushq	%rsi
 	pushq	%rdi
-	movl	-16(%rbp), %edi
+	movq	-16(%rbp), %rdi # load the address
 	call	Xredirect
 	popq	%rdi
 	popq	%rsi
 	pushq	%rsi
 	pushq	%rdi
-	movl	-8(%rbp), %edi
+	movq	-8(%rbp), %rdi  # load the address
 	call	Xredirect
 	popq	%rdi
 	popq	%rsi
-	movl	%edi, %eax
-	movl	%esi, %ecx
+	movl	(%rdi), %eax    # rdi instead of edi
+	movl	(%rsi), %ecx    # rsi instead of esi
 	addl	%ecx, %eax
 	movq	%rbp, %rsp
 	popq	%rbp
@@ -56,7 +58,7 @@ Xredirect:
 	pushq	%rbp
 	movq	%rsp, %rbp
 	pushq	%rdi
-	movl	-8(%rbp), %edi
+	movq	-8(%rbp), %rdi  # rdi instead of edi
 	call	Xincrement
 	popq	%rdi
 	movq	%rbp, %rsp
@@ -67,10 +69,10 @@ Xredirect:
 Xincrement:
 	pushq	%rbp
 	movq	%rsp, %rbp
-	movl	%edi, %eax
+	movl	(%rdi), %eax    # get value from address stored in rdi
 	movl	$1, %esi
 	addl	%esi, %eax
-	movl	%eax, %edi
+	movl	%eax, (%rdi)    # store value in address at rdi
 	movq	%rbp, %rsp
 	popq	%rbp
 	ret
