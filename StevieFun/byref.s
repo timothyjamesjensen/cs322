@@ -52,7 +52,7 @@ Xmain:
 Xbyref:
 	pushq	%rbp
 	movq	%rsp, %rbp
-# OPPORTUNITY 2
+# OPPORTUNITY 3
 #
 #
 # In the following assembly code, the registers
@@ -116,11 +116,35 @@ Xredirect:
 	popq	%rbp
 	ret
 
+# OPPORTUNITY 2
+#
+#
+# This opportunity for enhancement has to do
+# with the entire increment function, so I am
+# placing this comment directly above where that 
+# function begins.
+#
+# In assembly, there is a four instruction overhead
+# for each function that uses the base pointer. This
+# overhead increases execution time and prevents the
+# use of rbp as a general purpose register. While this
+# may not be much of a problem for large functions,
+# increment is a small function that does not even make
+# use of the stack frame. The four instruction overhead
+# to build a stack frame that we don't even use is a 
+# complete waste. 
+#
+# The solution to this would be to generate assembly that
+# performs inline calls to implement and avoids the
+# useless four instruction overhead. If the compiler 
+# could recognize this and take action, that would be a 
+# big improvement.
+
 	.globl	Xincrement
 Xincrement:
 	pushq	%rbp
 	movq	%rsp, %rbp
-# OPPORTUNITY 1
+# OPPORTUNITY 3
 #
 #
 # The following portion of assembly code

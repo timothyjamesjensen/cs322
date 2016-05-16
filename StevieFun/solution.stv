@@ -4,8 +4,8 @@
  *     given assembly file gives me no way to determine the names of the 
  *     parameters or variables used in the original program.
  *
- *  2. Comments. The assembly ignores comments (as it should), however this
- *     means that my code may appear very different than the orignal assembly
+ *  2. Comments. The assembly ignores comments, this
+ *     means that my code may appear very different than the original source
  *     due to the comments that I have included.
  *
  *  3. Whitespace. Whitespace can drastically change the appearance of a 
