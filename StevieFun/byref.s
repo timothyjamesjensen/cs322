@@ -1,3 +1,21 @@
+# Question 3 Solutions Guide.
+#
+# 1) Highlight the changes I made to support
+#    call by referense. All of the changes I
+#    have made have a comment on the RIGHT hand side
+#    of the assembly instruction, explaining
+#    what it does.
+#
+# 2) Describe the result produced by running
+#    the moddified assembly and justify that it
+#    is correct. At the bottom of this file there
+#    is a large comment tiled OUTPUT JUSTIFICATION.
+#    
+# 3) Identify three or more distinct examples of 
+#    problems with the original generated code.
+#    These are labeled as requested. ex: OPPORTUNITY #
+#
+
 	.file	"demo.s"
 
 	.data
@@ -17,10 +35,10 @@ Xmain:
 	movq	%rsp, %rbp
 	movl	$25, %eax
 	pushq	%rax
-	leaq	-8(%rbp), %rdi   # load the address
+	leaq	-8(%rbp), %rdi   # load the address of where 25 is stored
 	movl	$23, %eax        
         pushq   %rax             # push 23 onto stack
-        leaq    -16(%rbp), %rsi  # load the address
+        leaq    -16(%rbp), %rsi  # load the address of where 23 is stored
 	call	Xbyref
 	movq	%rax, %rdi
 	call	Xprint
@@ -36,18 +54,18 @@ Xbyref:
 	movq	%rsp, %rbp
 	pushq	%rsi
 	pushq	%rdi
-	movq	-16(%rbp), %rdi # load the address
+	movq	-16(%rbp), %rdi # load the address of where 25 is stored
 	call	Xredirect
 	popq	%rdi
 	popq	%rsi
 	pushq	%rsi
 	pushq	%rdi
-	movq	-8(%rbp), %rdi  # load the address
+	movq	-8(%rbp), %rdi  # load the address of where 23 is stored
 	call	Xredirect
 	popq	%rdi
 	popq	%rsi
-	movl	(%rdi), %eax    # rdi instead of edi
-	movl	(%rsi), %ecx    # rsi instead of esi
+	movl	(%rdi), %eax    # get the value in memory at the address in rdi
+	movl	(%rsi), %ecx    # get the value in memory at the address in rsi
 	addl	%ecx, %eax
 	movq	%rbp, %rsp
 	popq	%rbp
@@ -58,7 +76,7 @@ Xredirect:
 	pushq	%rbp
 	movq	%rsp, %rbp
 	pushq	%rdi
-	movq	-8(%rbp), %rdi  # rdi instead of edi
+	movq	-8(%rbp), %rdi  # store the address in rdi
 	call	Xincrement
 	popq	%rdi
 	movq	%rbp, %rsp
@@ -69,10 +87,37 @@ Xredirect:
 Xincrement:
 	pushq	%rbp
 	movq	%rsp, %rbp
-	movl	(%rdi), %eax    # get value from address stored in rdi
+# OPPORTUNITY 1
+#
+#
+# The following portion of assembly code
+# gets the value stored in memory from the
+# address in rdi and places that value in the
+# register eax. It then places the value 1 in
+# the register esi, and then it adds esi to eax.
+# The process is completed by updating the value
+# in memory at the address in rdi with the value
+# stored in eax. It takes FOUR lines of assembly 
+# to add 1 to the value stored in memory at the 
+# address in rdi.
+#
+# movl (%rdi), %eax
+# movl $1, %esi
+# addl %esi, %eax
+# movl %eax, (%rdi)
+#
+# These FOUR lines of assembly could be replaced
+# with a much more efficient
+# SINGLE line of assembly that would accomplish
+# exactly the same thing quicker and using fewer
+# registers.
+#
+# addl $1, (%rdi)
+
+	movl	(%rdi), %eax    # get value in memory at the address in rdi
 	movl	$1, %esi
 	addl	%esi, %eax
-	movl	%eax, (%rdi)    # store value in address at rdi
+	movl	%eax, (%rdi)    # update the value in memory at the address in rdi
 	movq	%rbp, %rsp
 	popq	%rbp
 	ret
@@ -89,11 +134,13 @@ Xincrement:
 # the byref() method. These values are then each passed
 # by reference into redirect and increment, which adds
 # 1 to the value of each. Since we are using pass by
-# reference, the ACTUAL value of these integers is expected
+# reference, the ACTUAL stored value in memory of these integers is expected
 # to change, and this new value will persist outside of the
-# method where they are incremented.
+# method where they are incremented because we are updating
+# the value stored in memory at the variable address.
 #
-# 25 + 23 = 48. Since 25 and 23 were both incremented by 1,
-# the new values should be 26 and 24. 
+# 25 and 23 are the ORIGINAL values. 25 + 23 = 48. 
+# Since 25 and 23 were both incremented by 1,
+# the UPDATED values should be 26 and 24. 
 # 26 + 24 = 50 which is what is the output generated for x + y.
 # x is now 26 which is the output for x.
