@@ -1,3 +1,5 @@
+# Timothy Jensen
+
 # Question 3 Solutions Guide.
 #
 # 1) Highlight the changes I made to support
@@ -52,7 +54,7 @@ Xmain:
 Xbyref:
 	pushq	%rbp
 	movq	%rsp, %rbp
-# OPPORTUNITY 3
+# OPPORTUNITY 1
 #
 #
 # In the following assembly code, the registers
