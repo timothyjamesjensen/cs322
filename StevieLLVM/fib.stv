@@ -1,0 +1,33 @@
+// Enumerate some fibonnacci numbers:
+
+int N = 16;
+
+void main() {
+  int a = 0;
+  int b = 1;
+  int j = 0;
+  while (j < N) {
+    print a;
+    int c = a + b;
+    a = b;
+    b = c;
+    j = j + 1;
+  }
+  demo(N);
+}
+
+void demo(int m) {
+  int i=0;
+  while (i<m) {
+    print recfib(i);
+    i = i+1;
+  }
+}
+
+int recfib(int n) {
+  if (n<2) {
+    return n;
+  } else {
+    return recfib(n-1) + recfib(n-2);
+  }
+}

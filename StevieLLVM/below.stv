@@ -1,0 +1,10 @@
+void main() {
+  print below(3, 4, 5);
+}
+
+int below(int x, int y, int z) {
+   while ((x < y) && (x < z)) {
+     x = x + 1;
+   }
+   return x;
+}

@@ -1,0 +1,274 @@
+//----------------------------------------------------------------------------
+// This parser is implemented using the javacc tool.  It can be built and
+// executed as follows (assuming that this file, Parser.jj, is included
+// in the same directory as all of the other source files---such as
+// Src.java---and that you have working versions of javacc and javac, as
+// on the Linuxlab machines):
+//
+//    $ javacc Parser.jj
+//    $ javac  *.java
+//
+// To run the parser on input stored in a file called prog.stv, use:
+//
+//    $ java Parser < prog.stv
+//
+// If you prefer, you can type your code in directly at the command prompt
+// (press newline and then ^D, at least on a Unix machine, to signal the
+// end of the input file).
+//
+//-- Define a main program / entry point for the parser: ---------------------
+
+PARSER_BEGIN(Parser)
+public class Parser {
+  public static void main(String args[]) throws ParseException {
+    new Parser(System.in);  // Read from standard input
+    Defn[] program = Top();
+    System.out.println("Complete program is:");
+    Defn.print(4, program);
+    new StaticAnalysis().run(program);
+    System.out.println("Passes static analysis!");
+  }
+}
+PARSER_END(Parser)
+
+//-- Define the grammatical rules for programs: ------------------------------
+
+// Complete programs comprise a sequence of zero or more definitions.
+// (One could quibble with the decision to include programs that contain
+// no definitions: how useful could such programs be in practice?  But
+// static analysis will deal with this indirectly by insisting that every
+// program contains a main function ...)
+
+Defn[] Top(): { Defn[] program; } {
+  program=defns(0) <EOF>
+  { return program; }
+}
+
+Defn[] defns(int soFar): { Defn d; Defn[] program; } {
+  ( d=defn() program=defns(soFar+1)
+    { program[soFar] = d; return program; }
+  | { return new Defn[soFar]; })
+}
+
+// We have relied on a function called defn() to parse a single
+// definition, which could be either a global variable definition or a
+// function definition.  This can be coded easily enough as a simple
+// alternative, although we will require a LOOKAHEAD(3) because we need
+// to consider three tokens to distinguish between a variable definition
+// like "int x=...;" and a function definition like "int x(...) ...".
+
+Defn defn(): { Defn d; } {
+  ( LOOKAHEAD(3)
+    d=globals()
+  | d=function())
+  { return d; }
+}
+
+// Global variable declarations are very easy to parse now, comprising a
+// type followed by a sequence of variable introductions:
+
+Defn globals(): { Type t; VarIntro[] vs; } {
+  t=type() vs=varIntros(0) ";"
+  { return new Globals(t, vs); }
+}
+
+// Function defintions begin with the return type (or "void" for any
+// function that does not return a result), followed by the function
+// name and a list of formal parameters.  The last component of a
+// function definition is the body, which should be a statement block:
+
+Defn function(): { Type t; Token t1; Formal[] formals; Stmt body; } {
+  t=retType() t1=<IDENT> "(" formals=formals() ")" body=block()
+  { return new Function(t, t1.image, formals, body); }
+}
+
+// Parse a return type (which could be void):
+Type retType(): { Type t; } {
+  ( t=type()
+  | "void" { t = null; } )
+  { return t; }
+}
+
+// Parse a list of zero or more formal parameters:
+Formal[] formals(): { Formal[] formals; } {
+  ( formals=formals1(0) | { formals=new Formal[0]; })
+  { return formals; }
+}
+
+// Parse a list of one or more comma-separated variable introductions:
+Formal[] formals1(int soFar): { Formal f; Formal[] formals; } {
+  f=formal() ( "," formals=formals1(soFar+1) {}
+             | { formals = new Formal[soFar+1]; })
+  { formals[soFar] = f; return formals; }
+}
+
+// Parse a single formal parameter:
+Formal formal(): { Type t; Token t1; } {
+  t=type() t1=<IDENT>
+  { return new Formal(t, t1.image); }
+}
+
+//-- Define the grammatical rules for statements: ----------------------------
+
+Stmt stmts() : { Stmt s1, s2; } { // one or more statements:
+  s1=stmt() [ s2=stmts() { s1=new Seq(s1,s2); } ]
+  { return s1; }
+}
+
+Stmt block() : { Stmt s1; } {
+  ("{" s1=stmts() "}" | s1=stmt()) { return s1; }
+}
+
+Stmt stmt() : { Token t, v; Expr e; Stmt s1, s2; Expr[] a; } {
+  s1=exprStmt()
+  { return s1; }
+| "if" "(" e=expr() ")" s1=block()
+     ("else" s2=block() { return new If(e, s1, s2); }
+     |                  { return new If(e, s1, null); })
+| "while" "(" e=expr() ")" s1=block()
+   { return new While(e, s1); }
+| "print" e=expr() ";"
+   { return new Print(e); }
+| "return" (e=expr() | {e=null;}) ";"
+   { return new Return(e); }
+| s1=varDecl()
+   { return s1; }
+}
+
+VarDecl varDecl() : { Type ty; VarIntro[] vars; } {
+  ty=type() vars=varIntros(0) ";"
+  { return new VarDecl(ty, vars); }
+}
+
+VarIntro[] varIntros(int soFar) : { VarIntro var; VarIntro[] vars; } {
+  var=varIntro() ("," vars=varIntros(soFar+1)
+                 |  { vars=new VarIntro[soFar+1]; })
+  { vars[soFar] = var; return vars; }
+}
+
+VarIntro varIntro() : { Token t; Expr e; } {
+  t=<IDENT> ("=" e=expr() { return new InitVarIntro(t.image, e); }
+            | { return new VarIntro(t.image); })
+}
+
+ExprStmt exprStmt() : { StmtExpr e; } {
+  e=stmtExpr() ";" { return new ExprStmt(e); }
+}
+
+//-- Define the grammatical rules for expressions: ---------------------------
+
+Expr expr() : { Expr e, e1; } {
+  e=lor() [ "=" e1=expr() { e = new Assign(e,e1); } ]
+  { return e; }
+}
+
+Expr lor() : { Expr n, m; } {
+  n=land() ["||" m=lor() { n = new LOr(n, m); }]
+  { return n; }
+}
+
+Expr land() : { Expr n, m; } {
+  n=rel() ["&&" m=land() { n = new LAnd(n, m); }]
+  { return n; }
+}
+
+Expr rel() : { Expr m, n; } {
+  n=term() ( ("<"  m=term() { n = new LT(n,m); })
+           | ("==" m=term() { n = new EqEq(n,m); }))*
+  { return n; }
+}
+
+Expr term() : { Expr m, n; } {
+  n=factor() ( ("+" m=factor() { n = new Plus(n,m); })
+             | ("-" m=factor() { n = new Minus(n,m); }))*
+  { return n; }
+}
+
+Expr factor() : { Expr m, n; } {
+  n=primary() ( ("*" m=primary() { n = new Mult(n,m); })
+              | ("/" m=primary() { n = new Div(n,m);  }) )*
+  { return n; }
+}
+
+Expr primary() : { Expr e; Expr idx; Type ty; } {
+  e=atom() ("[" idx=expr() "]" { e = new Nth(e, idx); })*
+  { return e; }
+| "new" ty=atype() "[" e=expr() "]" ("[" "]" { ty = new ArrayType(ty); })*
+  { return new NewArray(ty, e); }
+}
+
+Expr atom() : { Expr e; Token t; } {
+  "(" e=expr() ")"  { return e; }
+| t=<INTLIT>        { return new Int(Integer.parseInt(t.image)); }
+| "true"            { return new Bool(true); }
+| "false"           { return new Bool(false); }
+| "length" "(" e=expr() ")"
+                    { return new Length(e); }
+| LOOKAHEAD(2)
+  e=call()          { return e; }
+| t=<IDENT>         { return new Var(t.image); }
+}
+
+StmtExpr stmtExpr() : { StmtExpr e; } {
+  (LOOKAHEAD(2) e=call() | e=assign()) { return e; }
+}
+
+Assign assign(): { Expr e, e1; } {
+  e=lor() "=" e1=expr()
+  { return new Assign(e, e1); }
+}
+
+Call call(): { Token t; Expr[] args; } {
+  t=<IDENT> "(" args=args() ")"
+  { return new Call(t.image, args); }
+}
+
+Expr[] args(): { Expr[] args; } {
+  ( args=args1(0) | { args=new Expr[0]; })
+  { return args; }
+}
+
+Expr[] args1(int soFar): { Expr e; Expr[] args; } {
+  e=expr() ( "," args=args1(soFar+1) {}
+           | { args = new Expr[soFar+1]; })
+  { args[soFar] = e; return args; }
+}
+
+//-- Define the grammatical rules for types: ---------------------------------
+
+Type type() : { Type t; } {
+ t=atype()
+ ("[" "]" { t = new ArrayType(t); })*
+ { return t; }
+}
+
+Type atype() : {} {
+  "int"     { return Type.INT; }
+| "boolean" { return Type.BOOLEAN; }
+}
+
+//-- Define the lexical structure of an input language: ----------------------
+
+// Input elements that should be ignored/skipped:
+SKIP : {
+  " "
+| "\t"
+| "\n"
+| "\r"
+| <"//" (~["\n","\r"])* ("\n" | "\r" | "\r\n")>
+| <"/*" (~["*"])* ("*" | ~["*","/"] (~["*"])* "*")* "/">
+}
+
+// Lexemes that should be reported as valid tokens:
+TOKEN : {
+  <INTLIT    : <ZERO> | <POSDIGIT> (<DIGIT>)*>
+| <#POSDIGIT : ["1"-"9"]>
+| <#ZERO     : "0">
+| <#DIGIT    : <ZERO> | <POSDIGIT> >
+}
+
+TOKEN : {
+  <IDENT : ["a"-"z","A"-"Z"] (["a"-"z","A"-"Z","0"-"9","_"])*>
+}
+
+//----------------------------------------------------------------------------

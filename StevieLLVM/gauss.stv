@@ -1,0 +1,14 @@
+void main() {
+  print f();
+}
+
+int f() {
+  int i = 0;
+  int t = 0;
+  while (i < 11) {
+    t = t + i;
+    i = i + 1;
+  }
+  print t;
+  return i;
+}

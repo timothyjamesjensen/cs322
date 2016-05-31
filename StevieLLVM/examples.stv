@@ -1,0 +1,21 @@
+void main() {
+  print g(12);
+  print f(1, 2, 3);
+  print h(3, 4, 5);
+}
+
+int g(int u) {
+  return u*u;
+}
+
+int f(int x,
+      int y,
+      int z) {
+  return g(x+y);
+}
+
+int h(int x,
+      int y,
+      int z) {
+  return g(x) + g(y);
+}

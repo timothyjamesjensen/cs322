@@ -1,0 +1,426 @@
+------------------------------------------------------------------------
+REPRESENTING StevieLLVM PROGRAMS:
+=================================
+The main directory for these materials contains the source code for a
+compiler that translates programs written in the syntax of StevieFun
+into corresponding LLVM code.
+
+The parser for the compiler is implemented using the JavaCC source
+in Parser.jj.  You are not expected to modify this code in any way,
+but you may find it useful to consult the file for small details of
+the StevieFun grammar.
+
+The bulk of the source code is in the file Src.java.  The overall
+structure of this code should be very familiar to you already from
+previous assignments and labs, but we will still provide a brief
+overview here.
+
+Of course, most of the classes in Src.java are used to represent the
+abstract syntax of StevieFun programs, including classes that represent
+the types of StevieFun values and variables:
+
+    Type --+-- PrimType     primitive types, int and boolean
+           |
+           +-- ArrayType    array types of the form T[]
+
+There is also a fairly large hierarchy of classes that represent the
+different forms of expression that can be used in StevieFun programs:
+
+    Expr --+-- Int                  integer literals
+           +-- Bool                 boolean literals
+           |
+           +-- LValue               expressions that can be used
+           |    |                   on the left of an assignment
+           |    |
+           |    +-- Var             simple variables
+           |    |
+           |    +-- Nth             array accesses, arr[idx]
+           |
+           +-- NewArray             allocate a new array
+           |
+           +-- Length               return the length of an array
+           |
+           +-- StmtExpr             expressions that can be used as
+           |     |                  a statement
+           |     |
+           |     +-- Assign         assignments, lhs = rhs
+           |     |
+           |     +-- Call           function calls
+           |
+           +-- BinExpr              binary expressions
+                |
+                +-- ArithBinExpr    arithmetic (integer args and result)
+                |     +-- Plus      l + r
+                |     +-- Minus     l - r
+                |     +-- Mult      l * r
+                |     +-- Div       l / r
+                |
+                +-- RelBinExpr      relational (integer args, boolean result)
+                |     +-- LT        l < r
+                |     +-- EqEq      l == r
+                |
+                +-- LogicBinExpr    logical (boolean args and result)
+                      +-- LAnd      l && r
+                      +-- LOr       l || r
+
+There are also smaller class hierarchies for statements:
+
+    Stmt --+-- ExprStmt     expression (assignment/call) used as statement
+           +-- Seq          sequence of two statements
+           +-- While        while loop
+           +-- If           conditional statement
+           +-- Print        print statement
+           +-- Return       return statement
+           +-- VarDecl      variable declaration
+
+and for definitions:
+
+    Defn --+-- Globals      global variable definitions
+           |
+           +-- Function     function definitions
+
+There are a few additional classes defined at the end of Src.java.
+We list them here for completeness, but you will not be expected to
+modify any of these classes for the purposes of the current assignment:
+
+- StevieLLVM: implements the main StevieFun compiler; you (should :-)
+  have already read about how to use this in the README.txt file ...
+
+- The TypeEnv, FunctionEnv, StaticAnalysis, Context, and StaticError
+  classes are used in the implementation of static analysis (primarily
+  scope analysis and type checking).
+
+- VarIntro, InitVarIntro, and Formal are used to represent additional
+  details of Stevie's abstract syntax (the first two are for introducing
+  variables in local or global variable definitions, the third is used
+  for describing formal parameters of function definitions).
+
+A large part of the code in each of these definitions has to do with
+basic features such as constructing abstract syntax, printing out
+a textual description of a program, or performing static analysis.
+Our focus in this assignment will be on the parts of the code that have
+to do with code generation, most of which is captured in methods that
+have names beginning with the word "compile"; we will say more about
+this later, after a quick tour through a set of classes that represent
+the abstract syntax of LLVM, our target intermediate language.
+
+------------------------------------------------------------------------
+REPRESENTING LLVM PROGRAMS:
+===========================
+The "llvm" folder contains a collection of Java classes that describe
+the abstract syntax for (a subset of) LLVM.  The following notes
+provide a quick overview of the classes in this folder.  At this point
+in the course, however, you should be comfortable browsing these classes
+yourself to find information about the arguments for each constructor,
+and the corresponding instructions in LLVM.  (Or, if not that, then
+comfortable in posting questions on D2L to ask about these details!)
+In general terms, you will find some very strong similarities between
+the classes used here and those that were used in the Target language
+at the start of the course.
+
+Types:
+------
+Values of the Type class are used to represent LLVM types.  For our
+purposes, we only use a few special cases:
+
+  Type.i32  represents the type of 32 bit integers, written in
+            LLVM notation as i32.
+  Type.i1   represents the type of boolean values, written in
+            LLVM notation as i1.
+  Type.i8   represents the type of byte values, written in LLVM
+            notation as i8.
+
+In addition, for any LLVM type T, there is a corresponding pointer
+type, written T*.  If t is a Type value representing T, then t.ptr()
+represents the corresponding pointer type, T*.  Conversely, if t is a
+Type value representing the type T*, then t.ptsTo() is a representation
+for the type T.
+
+Be careful to distinguish values of the llvm.Type class from those
+of the Type class in the source language; for the code in Src.java,
+it is necessary to include the "llvm." prefix any type we want to
+refer to a specific LLVM type, as in llvm.Type.i8.
+
+Functions and Blocks:
+---------------------
+The Function class provides a representation for LLVM functions, each
+of which contains a collection of basic blocks represented by a vector
+of Block values.  You can use fn.block(code) to add a new block to a
+function fn.  (Or you can use b = fn.block() to create a new block
+that initially does not contain any code, and then use b.set(code)
+to fill in the code later.)  [As such, "fn" objects are used in a very
+similar way to the "prog" values that we used earlier in the course,
+and in HW2.]  There is also a method fn.reg(ty) that can be used to
+generate a new temporary variable/register name to hold a value of
+the specified LLVM type ty.
+
+Code:
+-----
+The code within a single basic block is represented by values of
+type Code, which is also very similar to the Code type that we used
+in the Target language at the start of the term.  In essence, every
+Code value is a sequence of operations (represented by the Op class),
+void function calls (represented by the CallVoid class), and store
+instructions (represented by the Store class) that is ultimately ended
+by one of five different "terminator" instructions: a Ret, a RetVoid,
+a Goto (unconditional jump/branch), a Cond (conditional jump), or an
+Unreachable (used only in very special circumstances described below).
+
+The following classes are used to represent Code values:
+
+    Code ---+-- Ret            return a specific value
+            |
+            +-  RetVoid        return from a void function
+            |
+            +-  Goto           unconditional branch to a block
+            |
+            +-  Cond           conditional branch to one of two blocks
+            |
+            +-  Unreachable    indicates that this line is unreachable
+            |                  (use after a CallVoid that is known not
+            |                  not to return)
+            |
+            +-- Op             operation of the form %lhs = rhs:
+            |                  the right hand side instruction, rhs, is
+            |                  executed; the result is stored in %lhs;
+            |                  and then execution continues with the next
+            |                  section of code
+            |
+            +-- CallVoid       call a void function by specifying the
+            |                  function name and by giving a list of the
+            |                  associated argument values.  After this,
+            |                  execution continues with the next section
+            |                  of code
+            |
+            +-- Store          store a value at a particular location.
+                               After this, execution continues with the
+                               next section of code.
+
+There are many different kinds of instruction that can appear in
+the right hand side portion of an Op operation, as described by the
+following hierarchy of classes:
+
+    Rhs --+-- BinOp
+          |     +--  Add     Integer arithmetic operations
+          |     +--  Div
+          |     +--  Mul
+          |     +--  Sub
+          |     |
+          |     +--  Eql     Integer comparison operations
+          |     +--  Neq
+          |     +--  Gte
+          |     +--  Gt
+          |     +--  Lte
+          |     +--  Lt
+          |
+          +-- Alloca         Allocate storage on the stack
+          |
+          +-- Load           Load a value from memory
+          |
+          +-- Call           Call a (non void) function
+          |
+          +-- Phi            Phi "function" for SSA form
+          |
+          +-- Getelementptr  Calculate address within array/structure
+          |
+          +-- Bitcast        Cast a value of one type to a different type
+
+Almost all of the class names shown here should be familiar from
+the lecture, the only exceptions being the last two: Getelementptr
+and Bitcast:
+
+  Getelementptr is a powerful LLVM instruction for calculating the
+  address of an individual element inside a larger structure or array.
+  We will only be using it in a special case that takes two arguments:
+  an address/pointer "a" of type T*, and an index "i" of type i32.
+  In this case, the Getelementptr instruction will return another
+  value of type T* which is the address of the "i"th element in an
+  array of T values starting at the address "a".
+
+  Bitcast is an instruction for converting a value of one type to a
+  value of another type *without* changing any bits.  As such, it
+  behaves like a no-op when the program is executed, but allows us
+  to change, for example, a pointer of type i8* into a pointer of
+  type i32* so as to keep the LLVM type checker happy.
+
+Values:
+-------
+There are also several classes that are used for representing LLVM
+values; these are the objects that can be used 
+
+  Value --+-- IntVal                            integer constant
+          |
+          +-- BoolVal                           boolean constant
+          |
+          +-- Location --+-- Formal             formal parameter
+                         |
+                         +-- Global             global variable
+                         |
+                         +-- Lhs --+-- Local    local variable
+                                   |
+                                   +-- Reg      register/temporary
+
+Example:
+--------
+As a small, concrete example, the following Java fragment shows the
+code that we might write to construct abstract syntax for a short
+LLVM code sequence that calculates v, saves the result in l, prints
+out the result (via a call to a void function called "print"), and
+then returns at the end of a void method (this code assumes that v
+and l are suitable values of type Value and Lhs, respectively):
+
+  new llvm.Op(l, new llvm.Add(llvm.Type.INT, v, new llvm.IntVal(1)),
+  new llvm.CallVoid("print", new Value[] { l },
+  new llvn.RetVoid()));
+
+------------------------------------------------------------------------
+COMPILATION USING LAMBDA EXPRESSIONS:
+=====================================
+[Heads up: The material in this section will probably seem quite
+daunting on first reading, especially if you've never actually used
+lambda expressions before.  But stick with it and it will get easier
+as you work through more examples!]
+
+Lambda Expressions in Java:
+---------------------------
+In addition to the classes described previously, the Src.java file also
+provides the definition of the following interface (what follows is
+the complete definition):
+
+  interface ValCont {        // Value -> Code continuation
+    public Code with(final Value v);
+  }
+
+In Java 8, an interface like this with just a single method is referred
+to as a "functional interface" and the compiler will allow programmers
+to construct objects that implement this interface by using lambda
+expressions of the form:
+
+  v -> body
+
+where v is a placeholder for the name of the method's parameter,
+and body is a block of code that ends with a return statement that
+specifies the return result of the function.  In this particular
+example, the ValCont interface describes functions that map a Value
+to a Code sequence.  For example, we can write:
+
+  v -> { return new llvm.Ret(v); }
+
+as a function that takes a value, v, as input and returns the code
+sequence for an LLVM program that returns v.  In special cases like
+this where the body of the block just returns a simple expression,
+it is possible to replace the text on the right of the "->" symbol
+with that expression, as in:
+
+  v -> new llvm.Ret(v)
+
+Lambda expressions like this are very similar to the ones that we
+saw at the start of the term in the FCF portion of the Interpretour,
+and again later when we had "Fun with Functions", implemented using
+closures, in the second half of the term.
+
+Continuations:
+--------------
+We refer to ValCont objects/functions as "continuations" because they
+describe how a particular computation should be "continued" once a
+particular value has been calculated.  The main compile() method for
+expressions takes a single ValCont argument:
+
+  abstract Code compile(final llvm.Function fn, final ValCont k);
+
+The expectation here is that a call of the form:
+
+  expr.compile(fn, v -> body)
+
+will generate abstract syntax for LLVM code that will evaluate the
+expr and then continue with the code that is produced by passing the
+resulting value into the lambda expression.  (The fn parameter here
+can be used if it is necessary to create new blocks.)  For example,
+you will see this pattern combined with the specific lambda expression
+described above, in the code for compiling a Return statement:
+
+    return (exp==null)
+         ? new llvm.RetVoid()
+         : exp.compile(fn, v -> new llvm.Ret(v));
+
+(The first alternative here deals with the case where there is no return
+expression and a void return is required instead of a value return.)
+
+As a further example, here is the code for compiling a While statement:
+
+  Code compile(final llvm.Function fn, final Code andThen) {
+    final Block head = fn.block();
+    final Code  loop = new llvm.Goto(head);
+    head.set(test.compile(fn, v ->
+        new llvm.Cond(v, fn.block(body.compile(fn, loop)),
+                         fn.block(andThen))));
+    return loop;
+  }
+
+This follows the same basic structure that we've seen previously for
+compiling a while loop in the DemoComp Target language:
+
+- we create a new (but initially empty) basic block, head;
+
+- we create a new code sequence, loop, that will jump to the start of
+  the head block;
+
+- we fill the head block with code that evaluates the test expression
+  and passes on the result, in v, to a conditional instruction that
+  either executes the body or else exits the loop.
+
+
+A More Complicated Example - Using Higher-Order Functions:
+----------------------------------------------------------
+As a more complicated example, we could implement the translation of
+StevieLLVM's Plus expressions using the following code:
+
+  Code compile(final llvm.Function fn, final ValCont k) {
+    return l.compile(fn, lv ->
+           r.compile(fn, rv -> {
+             llvm.BinOp rhs = new llvm.Add(lv.getType(), lv, rv);
+             llvm.Reg   lhs = fn.reg(rhs.resultType());
+             return new llvm.Op(lhs, rhs, k.with(lhs));
+           }));
+  }
+
+The generated code that is produced here includes:
+
+  - code that evaluates the left operand, l, and passes on the resulting
+    value, lv;
+
+  - code that evaluates the right operand, r, and passes on the resulting
+    value, rv;
+
+  - an Op instruction that combines the lv and rv values using an LLVM
+    Add operation, captured as a right hand side, rhs, and saves the
+    result in a new temporary, lhs;
+
+  - code generated by passing the lhs to the continuation.
+
+Of course, the same approach would also work for many of the other
+binary operators.  And so, instead, of having to write essentially
+the same code for each one, we capture this general pattern using the
+following higher-order function in the BinExpr class:
+
+  Code binary(final llvm.Function fn,
+              final llvm.BinOp.Maker op,
+              final ValCont k) {
+    return l.compile(fn, lv ->
+           r.compile(fn, rv -> {
+             llvm.BinOp rhs = op.make(lv.getType(), lv, rv);
+             llvm.Reg   lhs = fn.reg(rhs.resultType());
+             return new llvm.Op(lhs, rhs, k.with(lhs));
+           }));
+  }
+
+The llvm.BinOp.Maker type used in the second argument here is another
+functional interface, so this is another place where we can used lambda
+expressions.  For example, here is the full code that we actually use
+for the compile() method for StevieLLVM's Plus expressions:
+
+  Code compile(final llvm.Function fn, final ValCont k) {
+    return binary(fn, (ty, l, r) -> new llvm.Add(ty, l, r), k);
+  }
+
+------------------------------------------------------------------------
