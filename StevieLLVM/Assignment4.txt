@@ -75,6 +75,13 @@ a) Be sure to include a commented listing of below.ll with your
 	clang -o below below.s runtime.c
 	./below
 
+	Here is a transcript of my terminal session
+
+	jtimothy@dege:~/cs322/cs322/StevieLLVM$ llc-3.4 -O0 -filetype=asm -march=x86-64 below.ll
+	jtimothy@dege:~/cs322/cs322/StevieLLVM$ clang -o below below.s runtime.c
+	jtimothy@dege:~/cs322/cs322/StevieLLVM$ ./below
+	output: 4
+
 	The output I received was:
 
 	  output: 4
