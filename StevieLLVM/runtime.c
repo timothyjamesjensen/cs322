@@ -16,5 +16,16 @@ void Xprint(int val) {
 }
 
 void* XallocArray(int num, int size) {
-    return (void*)malloc(num*size);
+//    num = num + 1; // increase the array size in order to store the length
+
+    int* array = malloc(++num*size);
+    
+    // if malloc returns null
+    if (array == NULL) {
+      printf("Out of Memory");
+      exit(1);
+    }
+    //store the length of the array in the first slot
+    *array = --num;
+    return (void*)array;
 }

@@ -277,6 +277,9 @@ class Nth extends LValue {
            idx.compile(fn, i -> {
              // "i" is a value that holds the value of the array index
 
+             llvm.Value iv = new llvm.IntVal(1);
+             llvm.Reg r = fn.reg(llvm.Type.i32);
+
              // Make a new register, "rg", to hold the address of the
              // requested array element:
              llvm.Reg  rg = fn.reg(a.getType());
@@ -285,8 +288,9 @@ class Nth extends LValue {
              // address of the "i"th element of the array starting at
              // address "a", save the result in register "rg", and then
              // pass "rg" as the input to the continuation "k":
-             return new llvm.Op(rg, new llvm.Getelementptr(a, i),
-                    k.with(rg));
+	     return new llvm.Op(r, new llvm.Add(llvm.Type.i32, i, iv),
+                    new llvm.Op(rg, new llvm.Getelementptr(a, r),
+                    k.with(rg)));
            }));
   }
 }
@@ -384,9 +388,20 @@ class Length extends Expr {
    *  code, represented by the continuation argument.
    */
   Code compile(final llvm.Function fn, final ValCont k) {
+    return this.compileLoc(fn, loc -> {
+      llvm.Reg rg = fn.reg(loc.getType().ptsTo());
+      return new llvm.Op(rg, new llvm.Load(loc), k.with(rg));
+    });
+  }
+  
+  Code compileLoc(final llvm.Function fn, final ValCont k) {
     // TODO: this is not a correct implementation: it always
     // behaves as if the array length is zero ...
-    return k.with(new llvm.IntVal(0));
+    //return k.with(new llvm.IntVal(0));
+    return arr.compile(fn, a -> {
+      llvm.Reg rg = fn.reg(a.getType());
+      return new llvm.Op(rg, new llvm.Getelementptr(a, new llvm.IntVal(0)), k.with(rg));
+    });
   }
 }
 
