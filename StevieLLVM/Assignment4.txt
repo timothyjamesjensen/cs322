@@ -1,0 +1,216 @@
+Tim Jensen
+CS322
+Assignment 4
+
+Question 1
+
+a) Be sure to include a commented listing of below.ll with your
+   answer along with evidence that it 'can be compiled, linked
+   with the runtime.c library, and executed' to produce the 
+   expected result. 
+
+  The following is my below.ll file
+
+  define void @XinitGlobals() {
+		entry:
+		  ret void
+		}
+
+		define void @Xmain() {
+		entry:
+		  ; call the below function and store the result in t0
+		  %t0 = call i32 @below(i32 3, i32 4, i32 5)
+		  call void @Xprint(i32 %t0)
+		  ret void
+		}
+
+		; declare external runtime library functions
+		declare void @Xprint(i32)
+
+		; function definitions
+
+		; define below as a function that returns an i32 int
+		; and takes in 3 i32 ints as parameters
+		; NOTE: xe is x entry
+		define i32 @below(i32 %xe, i32 %y, i32 %z) {
+		entry:
+		  ; immediately jump to the the while loop conditional
+		  br label %tst0
+
+		; tst0 is is the left side of the &&
+		tst0:
+		  ; use phi to preserve SSA form
+		  ; only needed for x because only x changes
+		  %x = phi i32 [ %xe, %entry ], [ %xb, %body ]
+
+		  ; if x is less than y, test the right hand side
+		  ; else jump to done
+		  %cmp0 = icmp slt i32 %x, %y
+		  br i1 %cmp0, label %tst1, label %done
+
+		; tst1 is the right side of the &&
+		tst1:
+		  ; if x is less than z, jump to the body
+		  ; else jump to done
+		  %cmp1 = icmp slt i32 %x, %z
+		  br i1 %cmp1, label %body, label %done
+
+		body:
+		  ; set xbody to equal x + 1
+		  %xb = add i32 %x, 1
+		  ; jump to the while loop conditional
+		  br label %tst0
+
+		done:
+		  ret i32 %x
+		}
+
+
+  Evidence:
+  
+    I compiled and executed the above LLVM code with the following
+	commands
+
+	llc-3.4 -O0 -filetype=asm -march=x86-64 below.ll
+	clang -o below below.s runtime.c
+	./below
+
+	The output I received was:
+
+	  output: 4
+
+	This is indeed the correct output because while the variable X
+    was less than 4 AND less than 5 it would be incremented by one.
+	X started out as 3, which is less than 4 AND less than 5, so the 
+	body of the loop was executed and X was incremented to 4. On the
+	next iteration, X was not less than 4, so X returned with a value 
+	of 4 and 4 was printed.
+
+
+b) You are exptected to show how the two LLVM programs differ;
+   you may well find it useful to include relevant parts of the
+   generated code as a way to support your answer.
+
+  Explanation:
+
+  There are quite a few ways the two LLVM programs differ. I will select
+  a few of the biggest ways that they differ and highlight these
+
+  * How the parameters are handled are handled
+
+     - The generated LLVM code seems to have an extremely confusing way
+       of dealing with parameters. In the entry label for the function
+       the code allocates memory for each of the variables, and then
+       stores a pointer to them. Every time it then wants to access the
+       variables it must load the value at the address into another 
+       register.
+
+       Memory creation:
+
+         entry:
+		 %z = alloca i32
+		 %y = alloca i32
+		 %x = alloca i32
+		 store i32 %x.param, i32* %x
+		 store i32 %y.param, i32* %y
+		 store i32 %z.param, i32* %z
+		 
+	   Using Memory:
+
+	     %t0 = load i32* %x
+	     use %to
+
+	   Overall this seems like a confusing way to use params.
+
+  * The amount of labels used
+
+     - The generated LLVM code uses many more labels than my
+       handwritten code. My code uses 5 labels in the below function
+       and the generated code uses 8. The three extra labels come from the
+       following flaws that could be eliminated with optimization. Every 
+       time there is a comparison, the code breaks to another label. This
+       label it breaks to takes the result of the comparison and decides
+       where to jump next.
+
+         L1:
+		   br i1 %t3, label %L6, label %L2
+		 L0:
+		   %t1 = load i32* %x
+		   %t2 = load i32* %y
+		   %t3 = icmp slt i32 %t1, %t2
+		   br label %L1
+
+	   The rusult of this is creating extra labels that don't really do
+	   much other than make things confusing. My handwritten LLVM code
+	   decides where to jump immediately after and in the same label as 
+	   the conditional.
+
+	     tst1:
+		  ; if x is less than z, jump to the body
+		  ; else jump to done
+		  %cmp1 = icmp slt i32 %x, %z
+		  br i1 %cmp1, label %body, label %done
+
+	   There is also one generated label that does absolutely nothing
+	   other than going to another label.
+
+	     L3:
+           br label %L2
+
+       My handwritten code does not have any 'filler' labels that do 
+       nothing but point to other labels.
+
+  * Order of the labels
+
+     - The order of the lables in the generated code are not in the
+       logical order of execution. When reading the code and trying
+       to follow along with where the code will jump next, this can
+       make this harder to understand. In comparison, in my handwritten 
+       code the labels are placed from top to bottom in the order that 
+       they are most likely to be jumped to. Granted, sometimes you need
+       to jump back upwards and cascade down through the labels again, but
+       the code has a much more iterative pattern that is easier to 
+       understand.
+
+}
+
+
+
+
+
+
+
+    b) You are expected to show how the two LLVM programs differ;
+    you may well find it useful to include relevant parts of the
+    generated code as a way to support your answer.
+
+    c) Your answer should explain the method that you have used
+    (again, including relevant code fragments is recommended where
+    appropriate) and you should make it clear that you have satisfied
+    each of three requirements that are listed in the bullet points
+    at the end of the question.
+
+
+    Expr primary() : { Expr e; Expr idx; Type ty; } {
+  e=atom() ("[" idx=expr() "]" { e = new Nth(e, idx); })*
+  { return e; }
+| "new" ty=atype() "[" e=expr() "]" ("[" "]" { ty = new ArrayType(ty); })*
+  { return new NewArray(ty, e); }
+
+
+
+
+
+
+
+Question 2:
+
+	a)
+	b)
+		// generates out of memory error because malloc returns null
+		void main() {
+  		int[] apple = new int[1000000000];
+  		print(3);
+		}
+
+	c)
