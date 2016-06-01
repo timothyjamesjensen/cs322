@@ -277,10 +277,14 @@ class Nth extends LValue {
            idx.compile(fn, i -> {
              // "i" is a value that holds the value of the array index
 
-
-             llvm.Reg tf = fn.reg(llvm.Type.i1);
-             // make a value and register for adding 1 to the passed index
+             // Make a new llvm.IntVal in order to add 1 to the 
+	     // current index. This will effectively 'shift' every
+             // value in the array up by one to make room for length
              llvm.Value iv = new llvm.IntVal(1);
+
+	     // Make a new register, 'r', to hold the result of the
+             // llvm.add operation between i and iv. This register
+             // will hold the new value of the array index
              llvm.Reg r = fn.reg(llvm.Type.i32);
 
 
@@ -288,17 +292,16 @@ class Nth extends LValue {
              // requested array element:
              llvm.Reg  rg = fn.reg(a.getType());
 
-
-
-             return new llvm.Op(tf, new llvm.Gte(llvm.Type.i32, iv, iv), new llvm.Cond(tf, 
-             // Use the llvm getelementptr instruction to calculate the
-             // address of the "i"th element of the array starting at
+             // Make a new llvm Op in order to add 1 to the value of the
+             // array index. Store the result of this add into the register
+             // r.
+             // Then use the llvm getelementptr instruction to calculate the
+             // address of the "r"th element of the array starting at
              // address "a", save the result in register "rg", and then
-             // pass "rg" as the input to the continuation "k":
-	            new llvm.Block("L1", new llvm.Op(r, new llvm.Add(llvm.Type.i32, i, iv),
+             // pass "rg" as the input to the continuation "k": 
+	     return new llvm.Op(r, new llvm.Add(llvm.Type.i32, i, iv),
                       new llvm.Op(rg, new llvm.Getelementptr(a, r),
-                      k.with(rg)))),
-             new llvm.Block("L0", new llvm.Unreachable())));
+                      k.with(rg)));
            }));
   }
 }
