@@ -261,10 +261,11 @@ SKIP : {
 
 // Lexemes that should be reported as valid tokens:
 TOKEN : {
-  <INTLIT    : <ZERO> | <POSDIGIT> (<DIGIT>)*>
+  <INTLIT    : <ZERO> | <NEG> | <POSDIGIT> (<DIGIT>)*>
 | <#POSDIGIT : ["1"-"9"]>
 | <#ZERO     : "0">
 | <#DIGIT    : <ZERO> | <POSDIGIT> >
+| <#NEG      : "-" <POSDIGIT> (<DIGIT>)*>
 }
 
 TOKEN : {

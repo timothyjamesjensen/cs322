@@ -16,7 +16,11 @@ void Xprint(int val) {
 }
 
 void* XallocArray(int num, int size) {
-//    num = num + 1; // increase the array size in order to store the length
+    if (num < 0) {
+      printf("Invalid array size %d", num);
+      exit(1);
+    }
+
 
     int* array = malloc(++num*size);
     
