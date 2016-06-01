@@ -277,20 +277,28 @@ class Nth extends LValue {
            idx.compile(fn, i -> {
              // "i" is a value that holds the value of the array index
 
+
+             llvm.Reg tf = fn.reg(llvm.Type.i1);
+             // make a value and register for adding 1 to the passed index
              llvm.Value iv = new llvm.IntVal(1);
              llvm.Reg r = fn.reg(llvm.Type.i32);
+
 
              // Make a new register, "rg", to hold the address of the
              // requested array element:
              llvm.Reg  rg = fn.reg(a.getType());
 
+
+
+             return new llvm.Op(tf, new llvm.Gte(llvm.Type.i32, iv, iv), new llvm.Cond(tf, 
              // Use the llvm getelementptr instruction to calculate the
              // address of the "i"th element of the array starting at
              // address "a", save the result in register "rg", and then
              // pass "rg" as the input to the continuation "k":
-	     return new llvm.Op(r, new llvm.Add(llvm.Type.i32, i, iv),
-                    new llvm.Op(rg, new llvm.Getelementptr(a, r),
-                    k.with(rg)));
+	            new llvm.Block("L1", new llvm.Op(r, new llvm.Add(llvm.Type.i32, i, iv),
+                      new llvm.Op(rg, new llvm.Getelementptr(a, r),
+                      k.with(rg)))),
+             new llvm.Block("L0", new llvm.Unreachable())));
            }));
   }
 }
