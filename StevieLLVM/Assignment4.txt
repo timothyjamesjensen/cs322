@@ -179,45 +179,282 @@ b) You are exptected to show how the two LLVM programs differ;
        the code has a much more iterative pattern that is easier to 
        understand.
 
-}
 
-
-
-
-
-
-
-    b) You are expected to show how the two LLVM programs differ;
-    you may well find it useful to include relevant parts of the
-    generated code as a way to support your answer.
-
-    c) Your answer should explain the method that you have used
-    (again, including relevant code fragments is recommended where
-    appropriate) and you should make it clear that you have satisfied
-    each of three requirements that are listed in the bullet points
-    at the end of the question.
-
-
-    Expr primary() : { Expr e; Expr idx; Type ty; } {
-  e=atom() ("[" idx=expr() "]" { e = new Nth(e, idx); })*
-  { return e; }
-| "new" ty=atype() "[" e=expr() "]" ("[" "]" { ty = new ArrayType(ty); })*
-  { return new NewArray(ty, e); }
-
-
-
-
-
+c) Your answer should explain the method that you have used
+   (again, including relevant code fragments is recommended where
+   appropriate) and you should make it clear that you have satisfied
+   each of three requirements that are listed in the bullet points
+   at the end of the question.
 
 
 Question 2:
 
-	a)
-	b)
-		// generates out of memory error because malloc returns null
-		void main() {
-  		int[] apple = new int[1000000000];
-  		print(3);
-		}
+  a) The length of the array is not stored in memory, so there is no way
+     to determine the length of an array at runtime, and no wat to 
+     implement the length operation.
 
-	c)
+  Solution:
+
+  The solution for the length of the array not being stored at runtime, is
+  to modify the compiler so that every array of type int[] stores an extra
+  length field at the start of the array, and then the rest of the array
+  elements are shifted up by four from the start of the array.
+
+  The first steps towards this was modifying runtime.c in order to store
+  the length field at the start of the array. I modified the XallocArray
+  function to look like this.
+
+    void* XallocArray(int num, int size) {
+      // malloc memory for the array
+      // add 1 to num to make room for the length field
+      int* array = malloc(++num*size);
+
+      // store the length of the array in the first slot
+      // subtract 1 from num before that happens to counterbalance adding
+      // 1 earlier
+      *array = --num;
+
+      return (void*)array;
+    }
+
+  As you will notice I added one to the size of the array in order to 
+  make room for the length field inside the array memory.
+
+  Now we have the length stored in the first slot of the array. Storing
+  the length of the array like this however adds an additional problem
+  for us. Right now the compiler thinks that we have an array of length
+  11, with the length stored at index 0. That means that the Nth function
+  in the compiler is not working correctly, and we need to make some 
+  changes there in order to shift the rest of the array elements up.
+
+  The following is my updated version of the compileLoc method inside of
+  the Nth class in Src.java.
+
+    Code compileLoc(final llvm.Function fn, final ValCont k) {
+      return arr.compile(fn, a ->
+           // "a" is a value that holds the address of the array
+           idx.compile(fn, i -> {
+             // "i" is a value that holds the value of the array index
+
+             // Make a new llvm.IntVal in order to add 1 to the
+             // current index. This will effectively 'shift' every
+             // value in the array up by one to make room for length
+             llvm.Value iv = new llvm.IntVal(1);
+
+             // Make a new register, 'r', to hold the result of the
+             // llvm.add operation between i and iv. This register
+             // will hold the new value of the array index
+             llvm.Reg r = fn.reg(llvm.Type.i32);
+
+
+             // Make a new register, "rg", to hold the address of the
+             // requested array element:
+             llvm.Reg  rg = fn.reg(a.getType());
+
+             // Make a new llvm Op in order to add 1 to the value of the
+             // array index. Store the result of this add into the register
+             // r.
+             // Then use the llvm getelementptr instruction to calculate the
+             // address of the "r"th element of the array starting at
+             // address "a", save the result in register "rg", and then
+             // pass "rg" as the input to the continuation "k":
+             return new llvm.Op(r, new llvm.Add(llvm.Type.i32, i, iv),
+                      new llvm.Op(rg, new llvm.Getelementptr(a, r),
+                      k.with(rg)));
+           }));
+    }
+
+  I believe the the above code is well documented with comments, but I 
+  will also add some notes here to further clarify the changes I made and
+  WHY I made those changes.
+  The issue at hand was that all of the values in the array needed to be 
+  'shifted' over by one. In other words, whenever Nth is called to access
+  a specific index, the compiler needs to generate code that will access
+  and value at 1 index higher. In order to do this, code needed to be 
+  generated that would add 1 to the index before it retrieved a value.
+  I created an llvm.IntVal containing and integer value of 1
+  and an llvm.Reg in order to help me achieve this. 
+  Then I created an llvm.Op. The Rhs parameter of the Op was an
+  llvm.Add that added the original index plus the integer value of 1 
+  together and stored the result in the register r. The next parameter
+  of the Op was the code that uses the llvm getelementptr to calculate
+  the address of the element in the array, however istead of using the 
+  index i, it is now using the value stored in r, thus retrieving the 
+  value 'shifted up one' in the array.
+
+  Great, so now our array is storing length in the first slot and the
+  rest of the array is shifted up one slot to accomodate. Now we can add
+  implementation to the Length class. 
+  The following are my changes to the Length class in Src.java
+
+    Code compile(final llvm.Function fn, final ValCont k) {
+      return this.compileLoc(fn, loc -> {
+        // loc is the location of the address for the value we are
+        // trying to access
+
+        // create a new regsiter where we can load the value into
+        llvm.Reg rg = fn.reg(loc.getType().ptsTo());
+
+        // use the llvm.Load in order to load the value stored at
+        // loc into the register "rg" and then pass "rg" as the
+        // input to the continuation in "k"
+        return new llvm.Op(rg, new llvm.Load(loc), k.with(rg));
+      });
+    }
+
+    Code compileLoc(final llvm.Function fn, final ValCont k) {
+      return arr.compile(fn, a -> {
+        // "a" is a value that holds the address of the array
+
+        // Make a new register, "rg" to hold the address of the
+        // requested array element
+        llvm.Reg rg = fn.reg(a.getType());
+
+        // Use the llvm getelementptr instruction to calculate the address of the
+        // index (always stored at 0), and save the result in register "rg", then
+        // pass "rg" as the input to the continuation in "k"
+        return new llvm.Op(rg, new llvm.Getelementptr(a, new llvm.IntVal(0)), k.with(rg));
+      });
+    }
+
+  The first thing you may notice about the above code is that it looks
+  very similar to the code in the Nth class. Thats because it is. Since we
+  are storing the length of the array in the first slot of the array 
+  memory, in order to retrieve the length we simply need to perform and
+  array access call at the 0th slot and we will get the length. Thus
+  the above compileLoc method is almost an exact copy of the compileLoc
+  in the Nth class, with some slight changes. There is no idx in  the 
+  Length class, so that is gone, and we are always calculating the address
+  of the value stored at 0. Whats new here is the code in the compile 
+  method. Once again I am stealing from the Nth calss, or morespecifically
+  the LValue class. Nth is a sublcass of LValue, and LValue has a compile 
+  method that calls the compileLoc method from Nth. I copied that pattern 
+  to use here. Compile calls compileLoc, and then loads the value from the
+  returned address into a register and passes that register forward for
+  use in the code to come.
+
+  Testing:
+   
+  I think it is not the time to show some tests used to validate that
+  we have achived the expected results with these changes.
+
+  TEST: 
+    void main() {
+      int[] apple = new int[10];
+      print length(apple);
+      apple[0] = 12;
+      print apple[0];
+      print length(apple);
+    }
+
+  OUTPUT:
+    output: 10
+    output: 12
+    output: 10
+
+  OUTPUT JUSTIFICATION:
+    In the test program, an array named apple of length ten is created.
+    The value of length(apple) is then printed and the output is 10. This
+    shows us that the length of the array is INDEED being stored 
+    successfully and that out Length class is retrieving this value
+    succesffully.
+    Next we access the value at index 0 and set it to 12, we then print
+    this out and the output is 12.
+    Now here is where we verify that all of the values in the array are
+    indeed being shifted up by one. If the values are being shifted up
+    by one, then index zero should actually be referring to the second
+    slot in the array memory, and the length value stored in the first
+    slot will remain unchanged. If however we messed up somewhere, the
+    length value stored in the first slot of the array will have been 
+    overwritten.
+    The output when we print length(apple) is once again 10, showing us
+    that we have successfully shifted over all the values in the array
+    to accomodate for storing length in the first slot.
+
+
+b) The storage for new arrays is allocated by using a function called
+   XallocArray(), which has been implemented by a function in the (still)
+   very simple runtime library, runtime.c, which in turn relies on a 
+   call to the standard C library function called malloc(). However,
+   the implementation of this function does not check that the value
+   of the size argument is valid (in particular, it should be greater
+   than or equal to zero) and it does not test the return result that
+   is produced by the call to malloc to make sure that it is not null.
+
+  In order to complete this portion of the assignment, I needed to 
+  modify  the XallocArray function in runtime.c. I have already modified
+  runtime.c once earlier when working on part a, so I will try to 
+  highlight only the new changes.
+
+  Below is my updated XallocArray function
+
+    void* XallocArray(int num, int size) {
+      // NEW CHANGE
+      // verify that num is greater than 0
+      // else print an error message and exit
+      if (num < 0) {
+        printf("Invalid array size %d", num);
+        exit(1);
+      }
+
+      // malloc memory for the array
+      // add 1 to num to make room for the length field
+      int* array = malloc(++num*size);
+
+      // NEW CHANGE
+      // verify that the result of malloc is not null
+      // if it is null, print error message and exit
+      if (array == NULL) {
+        printf("Out of Memory");
+        exit(1);
+      }
+
+      // store the length of the array in the first slot
+      // subtract 1 from num before that happens to counterbalance adding
+      // 1 earlier
+      *array = --num;
+
+      return (void*)array;
+    }
+
+  These changes should be fairly straightforward. simple if statemets to
+  check the values. If the values are not correct, print error messages
+  and exit(1);
+
+  Testing:
+
+  Now is the time to test the new changes to verify expected output
+
+  TEST:
+    void main() {
+      int[] apple = new int[1000000000];
+      print(1);
+    }
+
+  OUTPUT:
+    Out of Memory
+
+  OUTPUT JUSTIFICATION:
+    In the test program we try to create an array of size 1000000000.
+    malloc is unable to create enough memory for an array of this size
+    so it fails and returns null. Since malloc retuns null, we get 
+    'Out of Memory' as output and the program immediately exits.
+    We do not get 1 in the output from the print(1) because the program
+    exits before it reaches that line.
+
+  TEST:
+    // NOTE: In order for this test program to pass syntax analysis I had
+    //       to modify the Parser.jj file to accept negative integers.
+    void main() {
+      int[] apple = new int[-1];
+      print(1);
+    }
+  OUTPUT:
+    Invalid array size -1
+  OUTPUT JUSTIFICATION:
+    The entered size for an array was not greater than or equal to zero.
+    Thus the appropriate error message was received as output and the 
+    program immediately exited with exit code 1. print(1) is never
+    reached.
+		
+c)
